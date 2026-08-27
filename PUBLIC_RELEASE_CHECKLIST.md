@@ -12,6 +12,8 @@ Before publishing a snapshot:
 - [ ] Confirm that no model checkpoints, raw runs, judge-case exports, or local
       datasets are staged.
 - [ ] Verify licences for any optional environment assets added after this cleanup.
+- [x] Include complete MIT and Apache-2.0 licence texts and preserve per-file
+      copyright, licence, and modification notices.
 - [x] Exclude research-working `analysis/` and `paper/` directories from the
       software release.
 

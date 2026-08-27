@@ -2,18 +2,26 @@
 import os
 import random
 import logging
+from importlib import import_module
 import numpy as np
-import torch
 from datetime import timezone, datetime, timedelta
 from zoneinfo import ZoneInfo
 from contextlib import contextmanager
-import os
 
 UTC = timezone.utc
 
 def permanent_seed(seed: int) -> None:
+    """Seed CPU RNGs and PyTorch too when the RLVR stack is installed."""
     random.seed(seed)
     np.random.seed(seed)
+
+    try:
+        torch = import_module("torch")
+    except ModuleNotFoundError as exc:
+        if exc.name != "torch":
+            raise
+        return
+
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)

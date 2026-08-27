@@ -19,8 +19,9 @@ and copyright notices, which remain authoritative for those files:
   `tracerigor/env/sokoban/prompt_verl_agent.py` (Nanyang Technological
   University and the verl-agent/GiGPO team).
 
-Redistributors should preserve those headers and review whether their release
-process requires an additional copy of the Apache License 2.0 text.
+These files have been modified for TraceRigor and carry change notices in their
+headers. Redistribution remains subject to Apache License 2.0; the complete
+licence text is provided in `LICENSES/Apache-2.0.txt`.
 
 The public cleanup excludes card-image artwork whose provenance was not
 established; Blackjack cards are now rendered programmatically. Raw judge-case

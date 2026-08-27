@@ -44,6 +44,10 @@ single universal GPU or VRAM minimum.
 | Self-hosted judge evaluation | Model-dependent GPU capacity | An OpenAI-compatible vLLM/Ollama service and its model weights |
 | Multi-turn rollout and RL training | Normally one or more CUDA GPUs | Compatible VERL runtime, model weights, environment services, and storage for checkpoints |
 
+Lightweight seed-dataset generation prepares reproducible environment instances;
+it is distinct from RLVR rollout collection. Rollout collection and training use
+the GPU/PyTorch stack described in the final row.
+
 For GPU-backed workflows, size capacity from the selected model, precision,
 sequence length, batch size, optimizer state, and sharding strategy. Start with
 the two-step training smoke configuration before increasing any of those
@@ -177,14 +181,18 @@ current project extends that foundation with trace-reliability judging,
 verifier prompts and mechanical checks, RLVR-oriented reliability analysis,
 additional environment integrations, and public workflow consolidation.
 
-The original MIT licence and copyright notice are retained in `LICENSE`.
-VERL and environment packages remain external dependencies governed by their
-own licences. See `THIRD_PARTY_NOTICES.md` for provenance and review notes.
+The upstream VAGEN MIT licence and copyright notice are retained in `LICENSE`.
+Four retained source files remain under Apache License 2.0; see
+`THIRD_PARTY_NOTICES.md` and `LICENSES/Apache-2.0.txt`. VERL and environment
+packages remain external dependencies governed by their own licences.
 
-The TraceRigor manuscript is currently anonymized; project-specific citation
-metadata will be added when the author list and archival identifier are public.
+Citation metadata will be added when the author list and archival identifier are
+public.
 
 ## Licence
 
-The repository is released under the MIT License in `LICENSE`. Retained
-third-party components and dependencies may carry separate terms.
+Except where individual files state otherwise, TraceRigor is distributed under
+the MIT License in `LICENSE`. Retained Apache-2.0 components are identified in
+`THIRD_PARTY_NOTICES.md`; full licence texts are provided in `LICENSE` and
+`LICENSES/Apache-2.0.txt`. Optional dependencies, datasets, and models retain
+their own terms.

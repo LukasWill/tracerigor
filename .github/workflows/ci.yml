@@ -53,3 +53,21 @@ jobs:
             echo 'Potential secret or machine-specific path found in tracked files.' >&2
             exit 1
           fi
+
+  dataset-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dataset and environment dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[data,envs]'
+      - name: Generate the documented Blackjack seed datasets
+        run: |
+          tracerigor data examples/data/blackjack.yaml \
+            --train-path /tmp/tracerigor-blackjack-train.parquet \
+            --test-path /tmp/tracerigor-blackjack-test.parquet
