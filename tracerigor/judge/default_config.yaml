@@ -1,0 +1,113 @@
+# Judge Stack Configuration (default)
+# Override in your training config or via JudgeConfig.from_dict()
+
+enabled: true
+
+# Rubrics to evaluate
+rubrics:
+  - observation_grounding
+  - action_coherence
+  - temporal_consistency
+
+# Judge mode: "universal" (one call, all rubrics) or "per_rubric"
+mode: universal
+
+# How many recent turns to include in the judge prompt
+history_k: 3
+
+# Whether to send images to the judge (requires multimodal provider)
+use_images: true
+
+# Primary judge provider (synchronous, in training path)
+provider:
+  name: vllm-local
+  base_url: "http://127.0.0.1:8001/v1"
+  api_key: EMPTY
+  model: gpt-oss-120b
+  is_multimodal: false
+  max_completion_tokens: 256
+  temperature: 0.0
+  timeout_s: 45.0
+  max_retries: 1
+  max_concurrency: 64
+  use_structured_output: true
+  use_responses_api: false
+
+# Example secondary providers (not in sync path — for audit/ensemble)
+# secondary_providers:
+#   qwen3-vl:
+#     name: vllm-vlm
+#     base_url: "http://127.0.0.1:8002/v1"
+#     api_key: EMPTY
+#     model: Qwen3-VL-8B-Instruct
+#     is_multimodal: true
+#     max_completion_tokens: 256
+#     temperature: 0.0
+#     timeout_s: 60.0
+#     max_retries: 1
+#     max_concurrency: 32
+#     use_structured_output: true
+#   openai:
+#     name: openai
+#     base_url: "https://api.openai.com/v1"
+#     api_key: "${OPENAI_API_KEY}"
+#     model: gpt-4o-mini
+#     is_multimodal: true
+#     max_completion_tokens: 256
+#     temperature: 0.0
+#     timeout_s: 30.0
+#     max_retries: 2
+#     max_concurrency: 32
+#     use_structured_output: true
+#   together:
+#     name: together
+#     base_url: "https://api.together.xyz/v1"
+#     api_key: "${TOGETHER_API_KEY}"
+#     model: meta-llama/Llama-3-70b-chat-hf
+#     is_multimodal: false
+#     max_completion_tokens: 256
+
+# Layer-0 heuristic thresholds
+heuristics:
+  min_trace_tokens: 8
+  repeat_action_window: 3
+  short_circuit_penalty: -0.20
+
+# Reward mapping
+reward:
+  rubric_weights:
+    observation_grounding: 0.35
+    action_coherence: 0.40
+    temporal_consistency: 0.25
+  insufficient_evidence_penalty: 0.15
+  reward_range: [-0.25, 0.25]
+  lambda_proc: 0.10
+  # Shaping modes (ported from service_llm_verifier_wrapper):
+  #   default:    r_proc = clamp(2*r_raw - 1, lo, hi)
+  #   symmetric:  delta = w_t * (2*score - 1), allows negative
+  #   gate_mul:   multiplicative big/small reward splitting
+  symmetric_shaping: false
+  gate_mul: false
+  big_threshold: 0.5
+  alpha_big: 0.0
+  beta_small: 0.0
+  alpha_small: 0.0
+
+# Training gating schedule
+gating:
+  enable_after_step: 0
+  disable_after_step: -1
+  run_every_k_steps: 1
+  anneal_enabled: false
+  anneal_start_step: 35
+  anneal_end_step: 100
+  anneal_hi_scale: 1.0
+  anneal_lo_scale: 0.5
+
+# Async audit queue
+audit:
+  enabled: true
+  log_dir: judge_audit
+  sample_rate: 0.02
+  low_confidence_threshold: 0.65
+  visual_confidence_threshold: 0.75

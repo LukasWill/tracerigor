@@ -1,0 +1,35 @@
+{
+  "run_name": "3B_ALFWorld_success",
+  "metric": "success",
+  "eval_subdir": "eval_results",
+  "n_common_steps": 19,
+  "dims": {
+    "grounding": {
+      "raw_cross_step_r": 0.37214515685036326,
+      "raw_p": 0.11665086431170946,
+      "partial_r": 0.2590357321493355,
+      "partial_p": 4.2814429020338864e-20,
+      "n_obs": 1216,
+      "n_steps": 19,
+      "perm_mean_abs_delta": 0.0
+    },
+    "action": {
+      "raw_cross_step_r": 0.13885066874416935,
+      "raw_p": 0.5707786876288102,
+      "partial_r": 0.46636398011068453,
+      "partial_p": 1.0871797292924013e-66,
+      "n_obs": 1216,
+      "n_steps": 19,
+      "perm_mean_abs_delta": 0.0
+    },
+    "temporal": {
+      "raw_cross_step_r": 0.7268646867678165,
+      "raw_p": 0.00042284665225655925,
+      "partial_r": 0.44715879164232375,
+      "partial_p": 7.936611381090108e-61,
+      "n_obs": 1216,
+      "n_steps": 19,
+      "perm_mean_abs_delta": 0.0
+    }
+  }
+}

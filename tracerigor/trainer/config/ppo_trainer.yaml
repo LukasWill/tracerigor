@@ -1,0 +1,304 @@
+data:
+  tokenizer: null
+  train_files: ~/data/rlhf/gsm8k/train.parquet
+  val_files: ~/data/rlhf/gsm8k/test.parquet
+  prompt_key: prompt
+  max_prompt_length: 512
+  max_response_length: 512
+  max_trajectory_length: 3072 # tracerigor only
+  train_batch_size: 1024
+  val_batch_size: null # set to null by default, not null if using ai2thor envs
+  return_raw_input_ids: False  # This should be set to true when the tokenizer between policy and rm differs
+  return_raw_chat: False
+  shuffle: True
+  filter_overlong_prompts: False # for large-scale dataset, filtering overlong prompts could be timeconsuming. You should disable this and set `truncation='left'
+  truncation: error
+  image_key: images
+
+actor_rollout_ref:
+  hybrid_engine: True
+  model:
+    path: ~/models/deepseek-llm-7b-chat
+    # Whether to use shared memory (SHM) for accelerating the loading of model weights
+    use_shm: false
+    external_lib: null
+    override_config: { }
+    enable_gradient_checkpointing: True
+    # Enable activation offloading for actor
+    enable_activation_offload: False
+    use_remove_padding: False
+    # Set to positive value to enable LoRA (e.g., 32)
+    lora_rank: 0
+    # LoRA scaling factor
+    lora_alpha: 16
+    # Target modules to apply LoRA. Options: "all-linear" or
+    # [q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj]
+    target_modules: all-linear
+  actor:
+    strategy: fsdp  # This is for backward-compatibility
+    ppo_mini_batch_size: 256
+    ppo_micro_batch_size: null # will be deprecated, use ppo_micro_batch_size_per_gpu
+    ppo_micro_batch_size_per_gpu: null
+    use_dynamic_bsz: False
+    ppo_max_token_len_per_gpu: 16384 # n * ${data.max_prompt_length} + ${data.max_response_length}
+    grad_clip: 1.0
+    grad_norm_threshold: 1000
+    clip_ratio: 0.2
+    # Lower bound for asymmetric clipping (used in dual-clip PPO)
+    clip_ratio_low: 0.2
+    # Upper bound for asymmetric clipping (used in dual-clip PPO)
+    clip_ratio_high: 0.28
+    # Constant C in Dual-clip PPO; clips when advantage < -C
+    clip_ratio_c: 3.0
+    # Loss aggregation mode: "token-mean", "seq-mean-token-sum", or "seq-mean-token-mean"
+    loss_agg_mode: token-mean
+    # Entropy regularization coefficient in PPO loss
+    entropy_coeff: 0.001
+    # Whether to use KL loss instead of KL reward penalty. True for GRPO
+    use_kl_loss: False # True for GRPO
+    # Whether to use torch.compile()
+    use_torch_compile: true
+    kl_loss_coef: 0.001 # for grpo
+    kl_loss_type: low_var_kl # for grpo
+    ppo_epochs: 1
+    shuffle: False
+    # Sequence parallelism size for Ulysses-style model parallelism
+    ulysses_sequence_parallel_size: 1 # sp size
+    # calculate entropy with chunking to reduce memory peak
+    entropy_from_logits_with_chunking: False
+    # recompute entropy
+    entropy_checkpointing: False
+    optim:
+      lr: 1e-6
+      lr_warmup_steps_ratio: 0.  # the total steps will be injected during runtime
+      min_lr_ratio: null   # only useful for warmup with cosine
+      warmup_style: constant  # select from constant/cosine
+      total_training_steps: -1  # must be override by program
+    fsdp_config:
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+      param_offload: False
+      optimizer_offload: False
+      # Only for FSDP2: offload param/grad/optimizer during train
+      offload_policy: False
+      # Only for FSDP2: Reshard after forward pass to reduce memory footprint
+      reshard_after_forward: True
+      fsdp_size: -1
+      # Only for FSDP1: FSDP1 configuration, prefetch the next forward-pass all-gather
+      # before the current forward computation.
+      forward_prefetch: False
+  # Reference model will be enabled when actor.use_kl_loss or/and algorithm.use_kl_in_reward is/are True.
+  ref:
+    strategy: fsdp
+    fsdp_config:
+      param_offload: False
+      # whether to perform reshard after model forward to save memory.
+      # only for fsdp2, [True, False, int between 1 and fsdp_size]
+      reshard_after_forward: True
+      forward_prefetch: False
+      # the wrap policy for FSDP model
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+    # whether to enable torch.compile
+    use_torch_compile: ${actor_rollout_ref.actor.use_torch_compile}
+    log_prob_micro_batch_size: null # will be deprecated, use log_prob_micro_batch_size_per_gpu
+    log_prob_micro_batch_size_per_gpu: null
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    ulysses_sequence_parallel_size: ${actor_rollout_ref.actor.ulysses_sequence_parallel_size} # sp size
+  rollout:
+    name: vllm
+    temperature: 1.0
+    top_k: -1 # 0 for hf rollout, -1 for vllm rollout
+    top_p: 1
+    use_fire_sampling: False # https://arxiv.org/abs/2410.21236
+    prompt_length: ${data.max_prompt_length}  # not use for opensource
+    response_length: ${data.max_response_length}
+    max_trajectory_length: ${data.max_trajectory_length}
+    # for vllm rollout
+    dtype: bfloat16 # should align with FSDP
+    gpu_memory_utilization: 0.5
+    ignore_eos: False
+    enforce_eager: True
+    free_cache_engine: True
+    # Which loader to use for rollout model weights: dummy_dtensor, hf, megatron, etc.
+    # safetensors (for huge model, and set use_shm=True); dummy_dtensor: randomly init model weight
+    load_format: dummy_dtensor
+    tensor_model_parallel_size: 2
+    max_num_batched_tokens: 8192
+    max_model_len: null
+    max_num_seqs: 1024
+    log_prob_micro_batch_size: null # will be deprecated, use log_prob_micro_batch_size_per_gpu
+    log_prob_micro_batch_size_per_gpu: null
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    disable_log_stats: True
+    enable_chunked_prefill: True # may get higher throughput when set to True. When activated, Please increase max_num_batched_tokens or decrease max_model_len.
+    # for hf rollout
+    do_sample: True
+    # number of responses (i.e. num sample times)
+    n: 1 # > 1 for grpo
+    limit_mm_per_prompt: 5 # for image limits in vllm rollout (default to 1, now we increase it to 5)
+
+critic:
+  # Number of rollouts per update (mirrors actor rollout_n)
+  rollout_n: ${actor_rollout_ref.rollout.n}
+  # fsdp or fsdp2 strategy used for critic model training
+  strategy: fsdp
+  optim:
+    lr: 1e-5
+    lr_warmup_steps_ratio: 0.  # the total steps will be injected during runtime
+    min_lr_ratio: null   # only useful for warmup with cosine
+    warmup_style: constant  # select from constant/cosine
+    total_training_steps: -1  # must be override by program
+    # Weight decay
+    weight_decay: 0.01
+  model:
+    path: ~/models/deepseek-llm-7b-chat
+    # Whether to use shared memory for loading the model
+    use_shm: False
+    tokenizer_path: ${actor_rollout_ref.model.path}
+    override_config: { }
+    external_lib: ${actor_rollout_ref.model.external_lib}
+    enable_gradient_checkpointing: True
+    use_remove_padding: False
+    fsdp_config:
+      param_offload: False
+      optimizer_offload: False
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+      fsdp_size: -1
+      forward_prefetch: False
+    # Set to positive value to enable LoRA (e.g., 32)
+    lora_rank: 0
+    # LoRA scaling factor
+    lora_alpha: 16
+    # LoRA target modules: "all-linear" or list of linear projection layers
+    target_modules: all-linear
+  ppo_mini_batch_size: ${actor_rollout_ref.actor.ppo_mini_batch_size}
+  ppo_micro_batch_size: null # will be deprecated, use ppo_micro_batch_size_per_gpu
+  ppo_micro_batch_size_per_gpu: null
+  forward_micro_batch_size: ${critic.ppo_micro_batch_size}
+  forward_micro_batch_size_per_gpu: ${critic.ppo_micro_batch_size_per_gpu}
+  use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+  ppo_max_token_len_per_gpu: 32768 # (${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}) * 2
+  forward_max_token_len_per_gpu: ${critic.ppo_max_token_len_per_gpu}
+  ulysses_sequence_parallel_size: 1 # sp size
+  ppo_epochs: ${actor_rollout_ref.actor.ppo_epochs}
+  shuffle: ${actor_rollout_ref.actor.shuffle}
+  grad_clip: 1.0
+  cliprange_value: 0.5
+  use_reward_mask: False
+  grad_norm_threshold: 1e3
+  # Loss aggregation mode: "token-mean", "seq-mean-token-sum", or "seq-mean-token-mean"
+  loss_agg_mode: ${actor_rollout_ref.actor.loss_agg_mode}
+
+reward_model:
+  enable: False
+  strategy: fsdp
+  model:
+    input_tokenizer: ${actor_rollout_ref.model.path}  # set this to null if the chat template is identical
+    path: ~/models/FsfairX-LLaMA3-RM-v0.1
+    # Whether to use shared memory for loading the model
+    use_shm: False
+    external_lib: ${actor_rollout_ref.model.external_lib}
+    use_remove_padding: False
+    fsdp_config:
+      wrap_policy:
+        min_num_params: 0
+      param_offload: False
+      fsdp_size: -1
+      forward_prefetch: False
+  micro_batch_size: null # will be deprecated, use micro_batch_size_per_gpu
+  micro_batch_size_per_gpu: null # set a number
+  max_length: null
+  ulysses_sequence_parallel_size: 1 # sp size
+  use_dynamic_bsz: ${critic.use_dynamic_bsz}
+  forward_max_token_len_per_gpu: ${critic.forward_max_token_len_per_gpu}
+  reward_manager: naive
+
+custom_reward_function:
+  path: null
+  name: compute_score
+
+algorithm:
+  gamma: 1.0
+  high_level_gamma: 0.99
+  lam: 1.0
+  adv_estimator: gae
+  # Whether to enable in-reward KL penalty
+  use_kl_in_reward: False
+  kl_penalty: kl  # how to estimate kl divergence
+  kl_ctrl:
+    type: fixed
+    kl_coef: 0.001
+    # Horizon value for adaptive controller (if enabled)
+    horizon: 10000
+    # Target KL divergence (used for adaptive controller)
+    target_kl: 0.1
+  token_reward_type: return
+  # for turn update grpo
+  turn_advantage_weight: 1.0
+  traj_advantage_weight: 1.0
+  use_std_normalization: False
+  # Whether to enable preference feedback PPO
+  use_pf_ppo: False
+  # Preference feedback PPO settings
+  pf_ppo:
+    # Method for reweighting samples: "pow", "max_min", or "max_random"
+    reweight_method: pow
+    # Power used for weight scaling in "pow" method
+    weight_pow: 2.0
+
+trainer:
+  balance_batch: True
+  total_epochs: 30
+  total_training_steps: null
+  project_name: verl_examples
+  experiment_name: gsm8k
+  logger: [ 'console', 'wandb' ]
+  val_generations_to_log_to_wandb: 0
+  # Optional: redirect validation images to an external high-capacity path.
+  # A symlink is created locally so that
+  # samples.jsonl references remain valid.  Leave null to store locally.
+  val_images_external_dir: null
+  nnodes: 1
+  n_gpus_per_node: 8
+  save_freq: -1
+  # auto: find the last ckpt to resume. If can't find, start from scratch
+  resume_mode: auto # or auto or resume_path if
+  resume_from_path: False
+  test_freq: -1
+  critic_warmup: 0
+  default_hdfs_dir: null
+  remove_previous_ckpt_in_save: False
+  del_local_ckpt_after_load: False
+  default_local_dir: checkpoints/${trainer.project_name}/${trainer.experiment_name}
+  val_before_train: True
+  val_only: False
+  use_turn_update: False
+  algorithm: ${algorithm.adv_estimator}
+
+rollout_manager:
+  max_trajectory_length: ${data.max_trajectory_length}
+  window_size: 5
+  max_turns: 5
+  n_gpus_per_node: ${trainer.n_gpus_per_node}
+  n_trajectory: 1 # >1 for grpo, please set actor_rollout_ref.rollout.n = 1 since we don't use vllm n sample parameter, set it >1 here for grpo agentic setting
+  latest_image_only_in_history: False # keep textual history for prior turns while only attaching images for the latest user turn
+  use_multi_turn_reward: True # for ablation study
+  use_loss_mask: True # for ablation study
+  use_gae_mask: True
+  special_token_for_loss_mask: ['<|box_start|>', '<|box_end|>']
+  truncation: ${data.truncation}
+  base_url: http://localhost:5000
+  use_service: False
+  timeout: 1200
+  max_workers: 8
+  # Debug options - set to False to reduce log verbosity and improve training speed
+  debug_verbose: False  # Set to True to enable extensive debug prints
+  debug_think_mask: False  # Set to True to enable think mask parsing debug output
+  use_think_verifier_reward: False  # Set to True when using LLM verifier for reward shaping

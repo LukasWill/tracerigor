@@ -1,0 +1,35 @@
+{
+  "run_name": "7B_SciWorld",
+  "metric": "score",
+  "eval_subdir": "eval_results",
+  "n_common_steps": 16,
+  "dims": {
+    "grounding": {
+      "raw_cross_step_r": -0.479416677261429,
+      "raw_p": 0.06023629604462652,
+      "partial_r": 0.03501741699917852,
+      "partial_p": 0.26314699151911897,
+      "n_obs": 1023,
+      "n_steps": 16,
+      "perm_mean_abs_delta": 0.0
+    },
+    "action": {
+      "raw_cross_step_r": 0.625291156766799,
+      "raw_p": 0.009589172665379286,
+      "partial_r": 0.13876943493849103,
+      "partial_p": 8.405143479514184e-06,
+      "n_obs": 1023,
+      "n_steps": 16,
+      "perm_mean_abs_delta": 0.0
+    },
+    "temporal": {
+      "raw_cross_step_r": -0.6412168195987417,
+      "raw_p": 0.007429485175501003,
+      "partial_r": 0.08584178561617992,
+      "partial_p": 0.006008608217550152,
+      "n_obs": 1023,
+      "n_steps": 16,
+      "perm_mean_abs_delta": 0.0
+    }
+  }
+}

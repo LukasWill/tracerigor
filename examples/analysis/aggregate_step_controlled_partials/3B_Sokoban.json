@@ -1,0 +1,35 @@
+{
+  "run_name": "3B_Sokoban",
+  "metric": "score",
+  "eval_subdir": "eval_results_patched_v1",
+  "n_common_steps": 19,
+  "dims": {
+    "grounding": {
+      "raw_cross_step_r": 0.8571495721308653,
+      "raw_p": 2.760815327180376e-06,
+      "partial_r": 0.5982758134460285,
+      "partial_p": 6.068535671823461e-119,
+      "n_obs": 1216,
+      "n_steps": 19,
+      "perm_mean_abs_delta": 2.55351295663786e-17
+    },
+    "action": {
+      "raw_cross_step_r": 0.2832590374000682,
+      "raw_p": 0.23993986656351537,
+      "partial_r": -0.0031493812130824264,
+      "partial_p": 0.9126393688076885,
+      "n_obs": 1216,
+      "n_steps": 19,
+      "perm_mean_abs_delta": 5.800915303666443e-17
+    },
+    "temporal": {
+      "raw_cross_step_r": 0.5314248969071674,
+      "raw_p": 0.019204741983904136,
+      "partial_r": 0.5283069441262838,
+      "partial_p": 2.3071153707155294e-88,
+      "n_obs": 1216,
+      "n_steps": 19,
+      "perm_mean_abs_delta": 5.995204332975846e-17
+    }
+  }
+}

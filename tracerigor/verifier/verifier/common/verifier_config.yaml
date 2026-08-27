@@ -1,0 +1,24 @@
+# Optional separate YAML
+verifier:
+  enabled: true
+  rubrics: ["self_consistency"] # ["self_consistency", "history", "grounding"]
+  model_name: gpt-5-nano-2025-08-07
+  model_params:
+    temperature: 1.0
+  reward_weights:
+    self_consistency: 1.0
+    history_consistency: 1.0
+    grounding: 1.0
+  keep_raw: false
+  use_images: true
+  use_observation_text: false
+  use_responses_api: true
+  history_k: 3
+  max_history_len: 5
+  anneal:
+    enabled: false
+    decay_start_step: 35
+    decay_end_step: 100
+    hi_scale: 1.0      # keep full weight until 35
+    lo_scale: 0.5      # or 0.2 — try 0.5 first; switch to 0.2 if entropy still collapses
+  symmetric_shaping: false       # true => allow negative deltas

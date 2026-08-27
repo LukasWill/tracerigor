@@ -1,0 +1,35 @@
+{
+  "run_name": "3B_Navigation",
+  "metric": "score",
+  "eval_subdir": "eval_results/sweep_v4",
+  "n_common_steps": 14,
+  "dims": {
+    "grounding": {
+      "raw_cross_step_r": 0.17463091957244517,
+      "raw_p": 0.5504356132191983,
+      "partial_r": 0.02748402375984201,
+      "partial_p": 0.41125155000131713,
+      "n_obs": 896,
+      "n_steps": 14,
+      "perm_mean_abs_delta": 0.0
+    },
+    "action": {
+      "raw_cross_step_r": 0.9378279620253381,
+      "raw_p": 7.285959058638476e-07,
+      "partial_r": 0.3933402310133873,
+      "partial_p": 1.58063980507874e-34,
+      "n_obs": 896,
+      "n_steps": 14,
+      "perm_mean_abs_delta": 0.0
+    },
+    "temporal": {
+      "raw_cross_step_r": 0.9405118702960287,
+      "raw_p": 5.624147023833888e-07,
+      "partial_r": 0.5277043683197784,
+      "partial_p": 2.1964160511752327e-65,
+      "n_obs": 896,
+      "n_steps": 14,
+      "perm_mean_abs_delta": 0.0
+    }
+  }
+}

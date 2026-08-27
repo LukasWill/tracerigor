@@ -1,0 +1,3 @@
+{"training_step": 0, "response": {"parse_success": true, "query_success": true, "rubrics": {"observation_grounding": {"score": 1.0}, "action_coherence": {"score": 0.5}, "temporal_consistency": {"score": 1.0}}}}
+{"training_step": 0, "response": {"parse_success": true, "query_success": true, "rubrics": {"observation_grounding": {"score": 0.5}, "action_coherence": {"score": 1.0}, "temporal_consistency": {"score": 0.5}}}}
+{"training_step": 10, "response": {"parse_success": true, "query_success": true, "rubrics": {"observation_grounding": {"score": 1.0}, "action_coherence": {"score": 1.0}, "temporal_consistency": {"score": 1.0}}}}
