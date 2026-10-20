@@ -30,11 +30,28 @@ from typing import Dict, Any, List, Optional
 
 import time
 from tracerigor.env.sokoban.utils import sokoban_state_to_sentences
-from tracerigor.server.llm_as_judge import run_llm_judge
-from tracerigor.server.llm_as_judge_sokoban_frozenlake import run_llm_judge as run_llm_judge_new
 
 import asyncio
-from tracerigor.verifier.verifier.openai_verifier import run_openai_verifier  # your coroutine entrypoint
+
+
+# The judge backends below pull in the legacy server stack (Hydra, OmegaConf,
+# W&B, Together). They are imported on first call so that environments using
+# only `llm_verifier_probe_wrapper` (e.g. Sokoban) import with the `envs` extra.
+def run_llm_judge(*args, **kwargs):
+    from tracerigor.server.llm_as_judge import run_llm_judge as _impl
+    return _impl(*args, **kwargs)
+
+
+def run_llm_judge_new(*args, **kwargs):
+    from tracerigor.server.llm_as_judge_sokoban_frozenlake import run_llm_judge as _impl
+    return _impl(*args, **kwargs)
+
+
+def run_openai_verifier(*args, **kwargs):  # returns the coroutine from the real entrypoint
+    from tracerigor.verifier.verifier.openai_verifier import run_openai_verifier as _impl
+    return _impl(*args, **kwargs)
+
+
 # If you also want an Ollama path, import your ollama runner and branch on config.
 from tracerigor.verifier.verifier.common.obs_utils import extract_text_from_obs, extract_images_from_obs
 

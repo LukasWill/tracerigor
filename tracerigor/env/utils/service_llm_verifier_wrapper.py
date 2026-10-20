@@ -4,8 +4,15 @@ import asyncio, re
 from dataclasses import asdict
 from concurrent.futures import ThreadPoolExecutor
 
-from tracerigor.verifier.verifier.openai_verifier import run_openai_verifier
 from tracerigor.utils.response_utils import replace_reasoning_block
+
+
+def run_openai_verifier(*args, **kwargs):
+    # Imported on first call: the verifier backend requires Hydra/OmegaConf,
+    # which the `envs` extra does not install.
+    from tracerigor.verifier.verifier.openai_verifier import run_openai_verifier as _impl
+    return _impl(*args, **kwargs)
+
 
 def _extract_tag(text: str, tag: str) -> str | None:
     if not text:

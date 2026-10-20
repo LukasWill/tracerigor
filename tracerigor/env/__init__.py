@@ -8,6 +8,7 @@ available automatically once their optional dependencies are installed.
 from __future__ import annotations
 
 from importlib import import_module
+from importlib.util import find_spec
 from typing import Any, Dict
 
 
@@ -21,6 +22,13 @@ _ENV_SPECS = {
     "blackjack": ("blackjack", "BlackjackEnv", "BlackjackEnvConfig", "BlackjackService", "BlackjackServiceConfig"),
     "babyai_text": ("babyai_text", "BabyAITextEnv", "BabyAITextEnvConfig", "BabyAITextService", "BabyAITextServiceConfig"),
     "sciworld": ("sciworld", "SciWorldEnv", "SciWorldEnvConfig", "SciWorldService", "SciWorldServiceConfig"),
+}
+
+# Integrations whose simulator is imported lazily on first reset. Their classes
+# register without it, so availability also checks for these packages.
+_RUNTIME_PACKAGES = {
+    "alfworld": ("alfworld", "textworld"),
+    "sciworld": ("scienceworld",),
 }
 
 REGISTERED_ENV: Dict[str, Dict[str, Any]] = {}
@@ -72,15 +80,27 @@ def get_environment(name: str) -> Dict[str, Any]:
     return REGISTERED_ENV[name]
 
 
+def _missing_runtime_packages(name: str) -> list:
+    return [package for package in _RUNTIME_PACKAGES.get(name, ()) if find_spec(package) is None]
+
+
 def environment_status() -> Dict[str, Dict[str, str]]:
     """Return availability information without exposing local configuration."""
-    return {
-        name: {
-            "status": "available" if name in REGISTERED_ENV else "unavailable",
-            "detail": "" if name in REGISTERED_ENV else ENV_IMPORT_ERRORS.get(name, "not loaded"),
-        }
-        for name in _ENV_SPECS
-    }
+    status = {}
+    for name in _ENV_SPECS:
+        if name not in REGISTERED_ENV:
+            status[name] = {
+                "status": "unavailable",
+                "detail": ENV_IMPORT_ERRORS.get(name, "not loaded"),
+            }
+        elif missing := _missing_runtime_packages(name):
+            status[name] = {
+                "status": "unavailable",
+                "detail": f"runtime package(s) not installed: {', '.join(missing)}",
+            }
+        else:
+            status[name] = {"status": "available", "detail": ""}
+    return status
 
 
 for _name in _ENV_SPECS:
