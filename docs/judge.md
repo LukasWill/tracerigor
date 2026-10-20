@@ -18,7 +18,7 @@ without an LLM call; informational checks are recorded and passed on.
 | --- | --- | --- |
 | `format_violation` | the env parser failed, no action was parsed, the raw trace has no `<action>`/`<answer>` tag, or a long trace has no `<think>`/`<reflection>` tag | short-circuit |
 | `invalid_action` | env feedback contains "No known action", or the action is not in `admissible_actions` | short-circuit |
-| `repetition` | same action as the most recent history entry with an unchanged observation | informational |
+| `repetition` | same action as the most recent history entry (`history[0]`) with an unchanged observation | informational |
 | `empty_trace` | reasoning shorter than `heuristics.min_trace_tokens` words (default 8) | informational |
 
 Remaining turns are rendered with an environment-specific template when one is
@@ -114,22 +114,28 @@ rollout loop. It is not wired into the rollout manager in this release; see
 `compute_process_reward` (`tracerigor/judge/reward.py`) maps a verdict to a
 bounded scalar:
 
-1. Short-circuited turns receive `-|reward.insufficient_evidence_penalty|`
-   (−0.15 by default), clamped to `reward.reward_range`.
+1. Short-circuited turns receive `heuristics.short_circuit_penalty`
+   (−0.20 by default), clamped to `reward.reward_range`, and skip the steps
+   below.
 2. Otherwise `r_raw` is the weighted mean of the available rubric scores
    (default weights 0.35 / 0.40 / 0.25), minus
    `insufficient_evidence_penalty` if the judge flagged insufficient evidence.
 3. With annealing enabled, a scale `w_t` interpolates linearly from
    `anneal_hi_scale` to `anneal_lo_scale` over
    `[anneal_start_step, anneal_end_step]`; otherwise `w_t = 1`.
-4. By default `r = w_t · (2·r_raw − 1)`; `gate_mul` switches to
-   multiplicative/additive gating around `big_threshold`.
+4. By default shaping is asymmetric, `r = w_t · max(0, 2·r_raw − 1)`: turns
+   with `r_raw > 0.5` earn a bonus and the rest earn 0, so the default never
+   produces a negative reward for a judged turn. `symmetric_shaping: true`
+   uses `r = w_t · (2·r_raw − 1)`, which penalises `r_raw < 0.5`.
+   `gate_mul` switches to multiplicative/additive gating around
+   `big_threshold`. `alpha_small` is accepted for parity with the
+   training-path verifier config but is not used by the judge.
 5. `r` is clamped to `reward_range` (default `[-0.25, 0.25]`).
    `JudgeIntegration` adds `lambda_proc · r` (default 0.10) to the
    environment reward.
 
-The default and `symmetric_shaping` branches are currently identical; see
-[Known issues](known-issues.md).
+`JudgeIntegration` passes rollout history to the judge most recent first,
+the same order as the `history` input field.
 
 ## Self-hosted judge
 

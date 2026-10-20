@@ -83,15 +83,16 @@ reward:
   reward_range: [-0.25, 0.25]
   lambda_proc: 0.10
   # Shaping modes (ported from service_llm_verifier_wrapper):
-  #   default:    r_proc = clamp(2*r_raw - 1, lo, hi)
-  #   symmetric:  delta = w_t * (2*score - 1), allows negative
+  #   default:    r_proc = w_t * max(0, 2*r_raw - 1), bonus only (asymmetric)
+  #   symmetric:  r_proc = w_t * (2*r_raw - 1), allows negative
   #   gate_mul:   multiplicative big/small reward splitting
+  # Heuristic short-circuits use heuristics.short_circuit_penalty instead.
   symmetric_shaping: false
   gate_mul: false
   big_threshold: 0.5
   alpha_big: 0.0
   beta_small: 0.0
-  alpha_small: 0.0
+  alpha_small: 0.0  # unused by tracerigor.judge; kept for wrapper-config parity
 
 # Training gating schedule
 gating:

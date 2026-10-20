@@ -252,8 +252,11 @@ def test_reward_all_fail():
         "action_coherence": RubricResult(score=0.0, label="fail", confidence=0.9),
         "temporal_consistency": RubricResult(score=0.0, label="fail", confidence=0.9),
     })
+    # Default (asymmetric) shaping gives no bonus and no penalty.
     r = compute_process_reward(resp, RewardConfig())
-    # r_raw = 0.0, mapped = -1.0, clamped to -0.25
+    assert r == 0.0, f"Expected 0.0, got {r}"
+    # Symmetric shaping: r_raw = 0.0, mapped = -1.0, clamped to -0.25
+    r = compute_process_reward(resp, RewardConfig(symmetric_shaping=True))
     assert r == -0.25, f"Expected -0.25, got {r}"
 
 

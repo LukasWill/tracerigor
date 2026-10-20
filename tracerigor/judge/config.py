@@ -58,9 +58,12 @@ class RewardConfig:
     """How rubric scores map to a bounded process reward.
 
     Shaping modes (inherited from service_llm_verifier_wrapper):
-      - symmetric: delta = w_t * (2*score - 1), allows negative rewards
-      - asymmetric (default): only positive bonus for score > 0.5
+      - asymmetric (default): w_t * max(0, 2*score - 1), only a positive
+        bonus for score > 0.5, never negative
+      - symmetric: w_t * (2*score - 1), allows negative rewards
       - gate_mul: multiplicative gating with big/small reward splitting
+
+    Heuristic short-circuits use ``HeuristicConfig.short_circuit_penalty``.
     """
 
     rubric_weights: Dict[str, float] = field(default_factory=lambda: {
@@ -78,7 +81,7 @@ class RewardConfig:
     big_threshold: float = 0.5                  # score above this is "big"
     alpha_big: float = 0.0                      # floor for big rewards in multiplicative mode
     beta_small: float = 0.0                     # additive component for small rewards
-    alpha_small: float = 0.0                    # floor for small rewards after hardening
+    alpha_small: float = 0.0                    # unused by tracerigor.judge; kept for wrapper-config parity
 
 
 @dataclass
