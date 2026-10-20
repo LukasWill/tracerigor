@@ -5,17 +5,18 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tracerigor"
 version = "0.1.0"
-description = "Train, verify, and analyze multi-turn agent trajectories."
+description = "Train multi-turn LLM agents with RLVR and audit whether their reasoning traces stay grounded, coherent, and consistent."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
   {name = "TraceRigor contributors"},
 ]
-keywords = ["rlvr", "agents", "reasoning", "reliability", "reinforcement-learning"]
+keywords = ["rlvr", "reinforcement-learning", "llm-agents", "llm-as-a-judge", "reasoning", "faithfulness", "process-reward", "multi-turn", "vlm"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
@@ -56,6 +57,11 @@ train = [
   "wandb>=0.17",
 ]
 dev = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/LukasWill/tracerigor"
+Documentation = "https://github.com/LukasWill/tracerigor/tree/main/docs"
+Issues = "https://github.com/LukasWill/tracerigor/issues"
 
 [project.scripts]
 tracerigor = "tracerigor.cli:main"

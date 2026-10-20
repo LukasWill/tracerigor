@@ -169,3 +169,11 @@ results/
 *.fls
 *.synctex.gz
 *.toc
+
+# Local environments, secrets, and judge outputs
+.venv/
+.env
+judge_audit/
+routed.jsonl
+judged.jsonl
+site/

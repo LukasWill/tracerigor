@@ -36,6 +36,21 @@ tracerigor analyze examples/analysis/sample_records.jsonl \
   --output /tmp/tracerigor-summary.json
 ```
 
+## Judge recorded turns
+
+```bash
+# Heuristic routing and rendered prompts; no network.
+tracerigor judge examples/judge/sample_turns.jsonl --dry-run --show-prompt -o routed.jsonl
+
+# LLM judging against an OpenAI-compatible endpoint.
+python -m pip install -e '.[judge]'
+tracerigor judge examples/judge/sample_turns.jsonl \
+  --base-url http://127.0.0.1:8001/v1 --model <served-model-name> -o judged.jsonl
+tracerigor analyze judged.jsonl
+```
+
+See [The trace judge](judge.md) for the input format and configuration.
+
 ## Inspect environments
 
 ```bash
@@ -58,7 +73,8 @@ tracerigor data examples/data/blackjack.yaml \
 ## Train
 
 The trainer requires a compatible VERL runtime, model weights, environment
-services, and GPU capacity. The public launcher checks its required variables
+services, and GPU capacity. The VERL revision is not pinned in this release;
+see [Known issues](known-issues.md). The public launcher checks its required variables
 and defaults to two steps:
 
 ```bash

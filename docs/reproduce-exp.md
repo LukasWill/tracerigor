@@ -15,9 +15,15 @@ What can be checked locally:
 
 ```bash
 tracerigor analyze examples/analysis/sample_records.jsonl
+tracerigor judge examples/judge/sample_turns.jsonl --dry-run
 python -m pytest
 bash -n examples/train/run.sh
 ```
 
-The JSONL fixture is synthetic and exercises the public analysis schema without
-requiring private experiment records.
+The analysis fixture is synthetic. The judge example uses observations from
+the seeded Sokoban simulator with hand-written agent responses; regenerate it
+with `python examples/judge/make_sample_turns.py`. The test suite also runs
+the LLM-judge path end to end against a local stub endpoint.
+
+Open reproducibility issues, including the unpinned VERL revision, are listed
+in [Known issues](known-issues.md).

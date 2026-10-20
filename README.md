@@ -1,107 +1,155 @@
 # TraceRigor
 
-**Train, verify, and analyze multi-turn agent trajectories.**
+[![CI](https://github.com/LukasWill/tracerigor/actions/workflows/ci.yml/badge.svg)](https://github.com/LukasWill/tracerigor/actions/workflows/ci.yml)
+![Python 3.10 | 3.11](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-TraceRigor is a research toolkit for studying whether reasoning traces generated
-during reinforcement learning with verifiable rewards (RLVR) remain reliable.
-It connects service-backed multi-turn rollouts and RL training with a
-judge/verifier layer and schema-tolerant analysis of externally obtained
-experiment records.
+**When reinforcement learning makes an agent succeed more often, does its reasoning get better, or does it just win?**
 
-The project focuses on three observable trace properties:
+TraceRigor is a research toolkit for training multi-turn LLM/VLM agents with
+reinforcement learning from verifiable rewards (RLVR), and for auditing whether
+their visible reasoning traces stay reliable along the way. It treats trace
+reliability as a measured quantity next to environment reward, because a
+high-reward trajectory can still describe a state that isn't there, take an
+action its own reasoning argues against, or ignore what the last turn revealed.
 
-- observation grounding;
-- action coherence; and
-- temporal consistency across turns.
+Each agent turn is scored on three rubrics:
 
-It does not treat a high environment reward as proof that a trajectory's
-reasoning is faithful or reliable.
+| Rubric | Question asked of each turn |
+| --- | --- |
+| **Observation grounding** | Do the reasoning's claims about the current state match the observation? |
+| **Action coherence** | Does the chosen action follow from the stated reasoning? |
+| **Temporal consistency** | Does the reasoning update its beliefs after feedback from earlier turns? |
 
-## Public workflows
+## Highlights
 
-TraceRigor supports five related workflows:
+- **Multi-fidelity trace judge.** Deterministic Layer-0 checks (format,
+  out-of-action-space, repetition, empty reasoning) resolve mechanically
+  detectable failures *before* any LLM call. Only the remaining turns go to a
+  Layer-1 LLM judge on any OpenAI-compatible endpoint (vLLM, OpenAI, Together,
+  OpenRouter), with JSON-schema guided decoding, rate limiting, retries, and
+  sampled audit logs of low-confidence verdicts
+  ([`tracerigor/judge/`](tracerigor/judge/)).
+- **Environment-aware prompts with ground truth.** Sokoban prompts include
+  simulator-derived spatial relations, and ScienceWorld prompts encode the
+  game's observation types, so the judge checks claims against state rather
+  than plausibility. Non-LLM ScienceWorld checks and trajectory replay provide
+  ground truth for validating the judge itself
+  ([`tracerigor/verifier/`](tracerigor/verifier/)).
+- **Multi-turn RLVR stack.** Service-backed environments, a multi-turn rollout
+  manager with turn-level loss/GAE masks, and PPO/GRPO with `bi_level_gae`,
+  `turn_wise_gae`, and `masked_gae` advantage estimators for turn-level credit
+  assignment. Optional rubric-based process rewards can shape training, with
+  bounded mapping, gating, and annealing schedules.
+- **Nine environment integrations.** Sokoban, FrozenLake, and Blackjack run on
+  CPU from `pip`; ALFWorld, ScienceWorld, BabyAI-Text, AI2-THOR Navigation,
+  ManiSkill PrimitiveSkill, and SVG reconstruction are opt-in. Missing
+  dependencies are isolated per environment and reported by `tracerigor envs`.
+- **Reliability analysis.** `tracerigor analyze` summarizes judged JSON/JSONL
+  records by checkpoint or any other field: rubric pass/uncertain rates, mean
+  trace reliability, parse and query success, and heuristic short-circuit rate.
 
-1. configure and register an interactive environment;
-2. generate lightweight training and evaluation seed datasets;
-3. run service-backed multi-turn rollout and RL training;
-4. evaluate turns and trajectories through the judge/verifier layer; and
-5. summarize JSON or JSONL experiment records with a generic analysis command.
+```mermaid
+flowchart LR
+    subgraph train["Multi-turn RLVR (VERL + Ray, GPU)"]
+        direction TB
+        data["Seed datasets<br/>tracerigor data"] --> rollout["Rollout manager<br/>multi-turn, turn masks"]
+        envs["Environment services<br/>Sokoban · ALFWorld · ScienceWorld · …"] <--> rollout
+        rollout --> trainer["PPO / GRPO<br/>bi-level & turn-wise GAE"]
+        trainer -- "updated policy" --> rollout
+        envs -. "optional rubric process reward" .-> rollout
+    end
+    rollout -- "agent turns" --> L0
+    subgraph judge["Trace judge (CPU client, tracerigor judge)"]
+        direction TB
+        L0["Layer 0: deterministic checks<br/>format · action space · repetition"] -- "pass" --> L1["Layer 1: LLM judge<br/>grounding · coherence · consistency"]
+        L0 -- "fail" --> SC["short-circuit verdict<br/>(no LLM call)"]
+    end
+    L1 --> analyze["tracerigor analyze<br/>reliability by checkpoint"]
+    SC --> analyze
+```
 
-The analysis command and lightweight tests run on a CPU. Full rollout and
-training workflows require external model weights, environment dependencies,
-GPU resources, and a compatible VERL installation.
+## Quick start (CPU, about two minutes)
 
-## Compute and hardware scope
+Requires Python 3.10 or 3.11. No GPU, model weights, or API key needed.
 
-Hardware requirements are workflow-dependent; the repository does not claim a
-single universal GPU or VRAM minimum.
+```bash
+git clone https://github.com/LukasWill/tracerigor.git
+cd tracerigor
+python -m venv .venv && source .venv/bin/activate
+python -m pip install -e '.[envs]'
+```
 
-| Workflow | Expected compute | External requirements |
+**1. Run the judge's deterministic layer on example turns.**
+[`examples/judge/sample_turns.jsonl`](examples/judge/sample_turns.jsonl)
+contains six Sokoban turns. The observations come from the seeded simulator,
+and the agent responses are hand-written to show distinct failure modes.
+
+```bash
+tracerigor judge examples/judge/sample_turns.jsonl --dry-run --show-prompt -o routed.jsonl
+# 6 turns: 2 short-circuited by heuristics, 4 would be sent to the LLM judge (dry run, no requests made)
+```
+
+| Turn | Failure mode | Route |
 | --- | --- | --- |
-| CLI, record analysis, and unit tests | CPU | Python 3.10 or 3.11 |
-| Lightweight seed-dataset generation | CPU for the bundled example | Dataset and selected environment dependencies |
-| Hosted judge evaluation | CPU client | Network access, provider account, and runtime API key |
-| Self-hosted judge evaluation | Model-dependent GPU capacity | An OpenAI-compatible vLLM/Ollama service and its model weights |
-| Multi-turn rollout and RL training | Normally one or more CUDA GPUs | Compatible VERL runtime, model weights, environment services, and storage for checkpoints |
+| `invalid_action` | `Jump` is outside the action space | Layer 0, rejected without an LLM call |
+| `format_violation` | no parseable action | Layer 0, rejected without an LLM call |
+| `hallucinated_state` | reasoning misdescribes the grid | Layer 1 (grounding) |
+| `incoherent_action` | pushes `Left` after planning to push right | Layer 1 (coherence) |
+| `stale_belief` | claims last turn solved the puzzle | Layer 1 (temporal consistency) |
+| `grounded` | consistent control case | Layer 1 |
 
-Lightweight seed-dataset generation prepares reproducible environment instances;
-it is distinct from RLVR rollout collection. Rollout collection and training use
-the GPU/PyTorch stack described in the final row.
+`routed.jsonl` contains each turn's heuristic checks and the exact prompt the
+LLM judge would receive, including the ground-truth spatial state.
 
-For GPU-backed workflows, size capacity from the selected model, precision,
-sequence length, batch size, optimizer state, and sharding strategy. Start with
-the two-step training smoke configuration before increasing any of those
-dimensions. CPU-only users can still install the base package, analyze records,
-inspect environment availability, and run the test suite.
-
-## Installation
-
-Use Python 3.10 or 3.11 in a virtual environment:
+**2. Judge them with an LLM.** Point the judge at any OpenAI-compatible server
+(for example one started with [`scripts/launch_judge_server.sh`](scripts/launch_judge_server.sh))
+or a hosted provider, then summarize:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e .
-```
-
-Install only the extras needed for a workflow:
-
-```bash
-python -m pip install -e '.[analysis]'
-python -m pip install -e '.[data,envs]'
 python -m pip install -e '.[judge]'
-python -m pip install -e '.[train]'
-python -m pip install -e '.[dev]'
+tracerigor judge examples/judge/sample_turns.jsonl \
+  --base-url http://127.0.0.1:8001/v1 --model <served-model-name> -o judged.jsonl
+# hosted provider: --base-url https://api.openai.com/v1 --model <model> --api-key-env OPENAI_API_KEY
+tracerigor analyze judged.jsonl
 ```
 
-Some environments have additional upstream prerequisites; `tracerigor envs
---verbose` reports integrations that are unavailable in the current
-environment without preventing the base package from importing.
+Verdicts depend on the judge model you choose. CI checks this path end to end
+against a local stub endpoint. If a provider rejects JSON-schema decoding, add
+`--no-structured-output`.
 
-## Quick start: analyze trace reliability
+**3. Step an environment directly.**
 
-The included records are synthetic and small:
+```python
+from tracerigor.env import get_environment
 
-```bash
-tracerigor analyze examples/analysis/sample_records.jsonl \
-  --group-by training_step
+spec = get_environment("sokoban")
+env = spec["env_cls"](spec["config_cls"](render_mode="text"))
+obs, info = env.reset(seed=7)
+print(obs["obs_str"])
+obs, reward, done, info = env.step("<think>The box is to my right.</think><action>Right</action>")
+print(reward, info["metrics"]["turn_metrics"])  # 0.4 {'action_is_valid': True, 'action_is_effective': True}
 ```
 
-The command reports rubric coverage, pass and uncertainty rates, mean trace
-reliability, and parse/query success rates. Input may be JSON or JSONL and can
-use direct rubric fields or the nested judge-response schemas used by the
-project.
+## Workflows and requirements
 
-## Environments and seed datasets
+| Workflow | Command | Compute | Install |
+| --- | --- | --- | --- |
+| Analyze judged records | `tracerigor analyze` | CPU | base |
+| Heuristic routing and prompt inspection | `tracerigor judge --dry-run` | CPU | base |
+| LLM judging | `tracerigor judge` | CPU client + an endpoint | `.[judge]` |
+| Inspect environments | `tracerigor envs --verbose` | CPU | `.[envs]` |
+| Generate seed datasets | `tracerigor data` | CPU (Blackjack example) | `.[data,envs]` |
+| Self-hosted judge model | `scripts/launch_judge_server.sh` | GPU sized to the model | vLLM (separate env) |
+| Multi-turn RL training | `tracerigor train` / `examples/train/run.sh` | One or more CUDA GPUs | `.[train]` + external VERL |
 
-List registered integrations:
+There is no single VRAM figure: requirements follow from model size,
+precision, context length, batch size, and sharding. See
+[Installation and workflows](docs/run-exp.md) for details on each workflow and
+[The trace judge](docs/judge.md) for the input schema, configuration, Python
+API, and reward mapping.
 
-```bash
-tracerigor envs --verbose
-```
-
-Generate a small Blackjack seed dataset:
+### Seed datasets
 
 ```bash
 python -m pip install -e '.[data,envs]'
@@ -110,28 +158,11 @@ tracerigor data examples/data/blackjack.yaml \
   --test-path data/blackjack/test.parquet
 ```
 
-The example defaults to text observations. Blackjack vision observations are
-rendered in code and do not rely on redistributed card artwork.
+### Training
 
-## Judge and verifier layer
-
-`tracerigor.judge` provides typed judge packets, configurable providers,
-heuristic gating, structured responses, audit support, and process-reward
-integration. `tracerigor.verifier` contains environment-specific prompts,
-parsers, mechanical checks, and OpenAI-compatible verifier clients.
-
-Provider secrets must be supplied at runtime through the standard environment
-variables used by the selected client, such as `OPENAI_API_KEY`,
-`ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, or `TOGETHER_API_KEY`. Never put working
-credentials in tracked configuration files. A local OpenAI-compatible judge
-server can use the non-secret placeholder `EMPTY`; see
-`scripts/launch_judge_server.sh`.
-
-## Training
-
-Training is intentionally not a zero-compute quick start. It depends on a
-compatible external VERL runtime, model weights, environment services, and
-normally one or more GPUs. After generating train and validation parquet files:
+Training needs a compatible VERL installation, model weights, and GPUs. It is
+not a zero-compute quick start. The launcher checks its required variables and
+defaults to a two-step smoke configuration with console-only logging:
 
 ```bash
 export MODEL_PATH=Qwen/Qwen2.5-VL-3B-Instruct
@@ -140,59 +171,73 @@ export VAL_FILE=data/blackjack/test.parquet
 bash examples/train/run.sh
 ```
 
-The example defaults to two training steps and console-only logging. It is a
-configuration smoke example, not a performance reproduction recipe. Review
-model licences and remote-code settings before using third-party checkpoints.
+> [!NOTE]
+> VERL is an external dependency and its version is not yet pinned in this
+> release. TraceRigor inherits its trainer from
+> [VAGEN](https://github.com/RAGEN-AI/VAGEN), which vendors VERL as a git
+> submodule. Use a VERL revision whose API matches `tracerigor/trainer/`
+> (`verl.workers.fsdp_workers`, `verl.workers.reward_manager`,
+> `verl.utils.dataset.rl_dataset`). See [Known issues](docs/known-issues.md).
 
-## Repository layout
+## Where to look in the code
+
+| If you want to see… | Start here |
+| --- | --- |
+| Layer-0/Layer-1 routing, response parsing, confidence | [`judge/router.py`](tracerigor/judge/router.py), [`judge/heuristics.py`](tracerigor/judge/heuristics.py) |
+| Async provider client (rate limits, retries, event-loop handling) | [`judge/client.py`](tracerigor/judge/client.py) |
+| Rubric scores → bounded process reward | [`judge/reward.py`](tracerigor/judge/reward.py) |
+| Environment-specific judge prompts | [`judge/env_templates.py`](tracerigor/judge/env_templates.py), [`verifier/prompt/`](tracerigor/verifier/prompt/) |
+| Mechanical ScienceWorld checks and replay | [`verifier/verifier/sciworld_mechanical_checks.py`](tracerigor/verifier/verifier/sciworld_mechanical_checks.py), [`sciworld_trajectory_replay.py`](tracerigor/verifier/verifier/sciworld_trajectory_replay.py) |
+| Turn-level credit assignment | `compute_advantage` in [`trainer/ppo/ray_trainer.py`](tracerigor/trainer/ppo/ray_trainer.py) |
+| Multi-turn rollout and masks | [`rollout/qwen_rollout/`](tracerigor/rollout/qwen_rollout/), [`rollout/utils/`](tracerigor/rollout/utils/) |
+| A compact environment implementation | [`env/blackjack/`](tracerigor/env/blackjack/), [`env/sokoban/`](tracerigor/env/sokoban/) |
 
 ```text
-tracerigor/          installable package
-  analysis/          schema-tolerant reliability summaries
-  env/               environment and service registry
-  judge/             typed judge, routing, reward, and audit layer
-  verifier/          prompts, parsers, mechanical checks, clients
-  rollout/           service-backed multi-turn rollout managers
-  trainer/           RL training entry point and credit assignment
-examples/             small public analysis, data, and training examples
-scripts/              generic setup and service utilities
-tests/                public unit and integration checks
+tracerigor/
+  analysis/   schema-tolerant reliability summaries (tracerigor analyze)
+  judge/      typed packets, heuristics, router, client, reward, audit, batch CLI
+  verifier/   environment prompts, parsers, mechanical checks, verifier clients
+  env/        environment + service registry and nine integrations
+  rollout/    service-backed multi-turn rollout managers
+  trainer/    Hydra/VERL PPO entry point and advantage estimators
+  inference/  provider adapters for evaluation rollouts
+  server/     legacy environment and judge servers
+examples/     judge, analysis, dataset, and training examples
+docs/         workflow, configuration, judge, and environment guides
 ```
-
-Raw run directories, model checkpoints, W&B downloads, generated plots, and
-private cluster launchers are intentionally excluded. Research-working
-directories and manuscript sources are also kept outside this software release.
 
 ## Reproducibility scope
 
-The repository provides reusable implementation, prompt definitions, public
-configuration examples, and lightweight fixtures. It does not contain the
-original raw experiment runs, proprietary judge outputs, research notebooks,
-manuscript sources, third-party datasets, or model checkpoints. The included
-synthetic analysis example is fully reproducible; paper-level numeric
-reproduction is outside the scope of this software release.
+This repository is a software release. It contains the implementation, prompt
+definitions, public configuration, and small fixtures. It does not contain raw
+experiment runs, model checkpoints, judge outputs from the original
+experiments, research notebooks, manuscript sources, or third-party datasets,
+so paper-level numbers cannot be regenerated from it alone. Everything in the
+quick start is reproducible on CPU and runs in CI. Open issues that affect
+reproducibility are tracked in [docs/known-issues.md](docs/known-issues.md).
 
 ## Relationship to VAGEN and VERL
 
-TraceRigor is derived from the public
-[VAGEN](https://github.com/RAGEN-AI/VAGEN) codebase and retains substantial
-environment, rollout, and training infrastructure from that project. The
-current project extends that foundation with trace-reliability judging,
-verifier prompts and mechanical checks, RLVR-oriented reliability analysis,
-additional environment integrations, and public workflow consolidation.
+TraceRigor is derived from [VAGEN](https://github.com/RAGEN-AI/VAGEN) and keeps
+substantial environment, rollout, and training infrastructure from it.
+TraceRigor adds the trace-reliability judge and verifier layer, environment
+ground-truth prompts and mechanical checks, violation tracking, RLVR-oriented
+reliability analysis, additional environment integrations, and the
+consolidated CLI. VERL and the simulators remain external dependencies under
+their own licences.
 
-The upstream VAGEN MIT licence and copyright notice are retained in `LICENSE`.
-Four retained source files remain under Apache License 2.0; see
-`THIRD_PARTY_NOTICES.md` and `LICENSES/Apache-2.0.txt`. VERL and environment
-packages remain external dependencies governed by their own licences.
+## Citation
 
-Citation metadata will be added when the author list and archival identifier are
-public.
+Citation metadata will be added when the accompanying paper's author list and
+archival identifier are public. Until then, please cite the repository URL.
 
 ## Licence
 
 Except where individual files state otherwise, TraceRigor is distributed under
-the MIT License in `LICENSE`. Retained Apache-2.0 components are identified in
-`THIRD_PARTY_NOTICES.md`; full licence texts are provided in `LICENSE` and
-`LICENSES/Apache-2.0.txt`. Optional dependencies, datasets, and models retain
-their own terms.
+the MIT License in [`LICENSE`](LICENSE), which retains the upstream VAGEN
+copyright notice. Four retained files are under Apache License 2.0; see
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
+[`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). Optional dependencies,
+datasets, and models keep their own terms.
+
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).

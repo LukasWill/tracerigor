@@ -1,5 +1,5 @@
 site_name: TraceRigor
-site_description: Train, verify, and analyze multi-turn agent trajectories.
+site_description: Train multi-turn LLM agents with RLVR and audit the reliability of their reasoning traces.
 
 theme:
   name: material
@@ -15,6 +15,7 @@ plugins:
 nav:
   - Overview: index.md
   - Installation and workflows: run-exp.md
+  - The trace judge: judge.md
   - Configuration:
       - General: configs/general-config.md
       - Training algorithms: configs/algo-config.md
@@ -22,6 +23,7 @@ nav:
       - Create an environment: envs/create-env.md
       - Create a service: envs/create-service.md
   - Reproducibility: reproduce-exp.md
+  - Known issues: known-issues.md
 
 markdown_extensions:
   - admonition
