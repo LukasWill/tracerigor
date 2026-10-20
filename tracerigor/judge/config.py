@@ -7,8 +7,12 @@ and audit policy.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+DEFAULT_CONFIG_PATH = Path(__file__).with_name("default_config.yaml")
 
 
 @dataclass
@@ -140,10 +144,10 @@ class JudgeConfig:
 
         for k, v in d.items():
             if k == "provider" and isinstance(v, dict):
-                cfg.provider = ProviderConfig(**v)
+                cfg.provider = ProviderConfig(**_expand_env(v))
             elif k == "secondary_providers" and isinstance(v, dict):
                 cfg.secondary_providers = {
-                    name: ProviderConfig(**pcfg) for name, pcfg in v.items()
+                    name: ProviderConfig(**_expand_env(pcfg)) for name, pcfg in v.items()
                 }
             elif k == "heuristics" and isinstance(v, dict):
                 cfg.heuristics = HeuristicConfig(**v)
@@ -157,3 +161,27 @@ class JudgeConfig:
                 setattr(cfg, k, v)
 
         return cfg
+
+    @classmethod
+    def from_yaml(cls, path: str | Path | None = None) -> "JudgeConfig":
+        """Load a judge YAML file (default: the packaged ``default_config.yaml``).
+
+        ``${VAR}`` references in provider settings are expanded from the
+        environment, so API keys can stay out of tracked files.
+        """
+        import yaml
+
+        source = Path(path) if path is not None else DEFAULT_CONFIG_PATH
+        with source.open(encoding="utf-8") as handle:
+            data = yaml.safe_load(handle) or {}
+        if not isinstance(data, dict):
+            raise ValueError(f"{source} must contain a YAML mapping")
+        return cls.from_dict(data)
+
+
+def _expand_env(provider: Dict[str, Any]) -> Dict[str, Any]:
+    """Expand ``${VAR}`` references in string-valued provider settings."""
+    return {
+        key: os.path.expandvars(value) if isinstance(value, str) else value
+        for key, value in provider.items()
+    }

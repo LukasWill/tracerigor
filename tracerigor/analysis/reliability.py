@@ -119,6 +119,14 @@ def _boolean_rate(records: Iterable[Mapping[str, Any]], paths: Sequence[Sequence
     return fmean(values) if values else None
 
 
+def _group_sort_key(value: str) -> tuple:
+    """Order numeric group keys numerically ("2" before "10"), others lexically."""
+    try:
+        return (0, float(value), value)
+    except ValueError:
+        return (1, 0.0, value)
+
+
 def analyze_records(
     records: Sequence[Mapping[str, Any]],
     *,
@@ -157,6 +165,10 @@ def analyze_records(
             records,
             (("response", "query_success"), ("query_success",)),
         ),
+        "short_circuit_rate": _boolean_rate(
+            records,
+            (("response", "short_circuited"), ("short_circuited",)),
+        ),
         "rubrics": rubric_summary,
     }
 
@@ -170,7 +182,7 @@ def analyze_records(
                 grouped[str(value)].append(record)
         result["groups"] = {
             key: analyze_records(group, rubrics=rubrics)
-            for key, group in sorted(grouped.items())
+            for key, group in sorted(grouped.items(), key=lambda item: _group_sort_key(item[0]))
         }
 
     return result

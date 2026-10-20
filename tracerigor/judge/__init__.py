@@ -12,6 +12,7 @@
 #   audit.py         – Non-blocking JSONL audit logger
 #   packet_builder.py – Bridges rollout manager data → TurnJudgePacket
 #   integration.py   – Single entry point for rollout manager
+#   batch.py         – Offline judging of recorded turns (`tracerigor judge`)
 
 from tracerigor.judge.config import JudgeConfig
 from tracerigor.judge.integration import JudgeIntegration
