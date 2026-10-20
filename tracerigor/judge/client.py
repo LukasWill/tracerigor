@@ -104,7 +104,17 @@ class JudgeClient:
                 "Install with: pip install openai httpx"
             )
         self.provider = provider
+        self._rate_limiter = _RateLimiter(
+            qps_limit=getattr(provider, "qps_limit", 70),
+            rpm_limit=getattr(provider, "rpm_limit", 4000),
+            tps_limit=getattr(provider, "tps_limit", 15000),
+            max_concurrency=provider.max_concurrency,
+        )
+        self._client = self._build_openai_client()
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
+    def _build_openai_client(self) -> "AsyncOpenAI":
+        provider = self.provider
         limits = httpx.Limits(
             max_connections=provider.max_concurrency + 16,
             max_keepalive_connections=provider.max_concurrency,
@@ -115,17 +125,27 @@ class JudgeClient:
             write=10.0,
             pool=provider.timeout_s,
         )
-        self._client = AsyncOpenAI(
+        return AsyncOpenAI(
             api_key=provider.api_key,
             base_url=provider.base_url,
             http_client=httpx.AsyncClient(limits=limits, timeout=timeout),
         )
-        self._rate_limiter = _RateLimiter(
-            qps_limit=getattr(provider, "qps_limit", 70),
-            rpm_limit=getattr(provider, "rpm_limit", 4000),
-            tps_limit=getattr(provider, "tps_limit", 15000),
-            max_concurrency=provider.max_concurrency,
-        )
+
+    def _bind_to_running_loop(self) -> None:
+        """Recreate loop-bound resources when called from a new event loop.
+
+        ``judge_batch_sync`` runs each batch under a fresh ``asyncio.run`` loop.
+        An ``asyncio.Semaphore`` or pooled HTTP connection created under an
+        earlier loop raises ``RuntimeError`` once it is used from a later one,
+        which previously surfaced as silent ``query_success=False`` results.
+        """
+        loop = asyncio.get_running_loop()
+        if self._loop is loop:
+            return
+        if self._loop is not None:
+            self._client = self._build_openai_client()
+        self._rate_limiter.semaphore = asyncio.Semaphore(self.provider.max_concurrency)
+        self._loop = loop
 
     # ------------------------------------------------------------------
     # Public API
@@ -141,6 +161,7 @@ class JudgeClient:
 
         For large batches, applies launch spread to avoid thundering herd.
         """
+        self._bind_to_running_loop()
         n = len(messages_batch)
         launch_spread_s = getattr(self.provider, "launch_spread_s", 0.0)
         batch_size = getattr(self.provider, "batch_size", 0)
@@ -424,9 +445,10 @@ def _messages_to_responses_input(messages: List[Dict[str, Any]]):
 def _run_async(coro):
     """Run an async coroutine from sync code, handling nested event loops."""
     try:
-        loop = asyncio.get_running_loop()
-        # Already in an async context — run in a worker thread
-        with ThreadPoolExecutor(max_workers=1) as ex:
-            return ex.submit(asyncio.run, coro).result()
+        asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
+    # Already in an async context — run in a worker thread. Errors raised by
+    # the coroutine propagate instead of being mistaken for "no running loop".
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        return ex.submit(asyncio.run, coro).result()
