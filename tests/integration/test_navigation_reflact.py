@@ -8,7 +8,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def _install_gym_sokoban_stub() -> None:
-    if "gym_sokoban.envs.sokoban_env" in sys.modules:
+    # Only stub packages that are not installed; never shadow the real ones.
+    if "gym_sokoban.envs.sokoban_env" in sys.modules or importlib.util.find_spec("gym_sokoban") is not None:
         return
 
     gym_sokoban_module = types.ModuleType("gym_sokoban")
@@ -28,7 +29,8 @@ def _install_gym_sokoban_stub() -> None:
 
 
 def _install_together_stub() -> None:
-    if "together" in sys.modules:
+    # Only stub packages that are not installed; never shadow the real ones.
+    if "together" in sys.modules or importlib.util.find_spec("together") is not None:
         return
 
     together_module = types.ModuleType("together")
@@ -41,7 +43,8 @@ def _install_together_stub() -> None:
 
 
 def _install_openai_stub() -> None:
-    if "openai" in sys.modules:
+    # Only stub packages that are not installed; never shadow the real ones.
+    if "openai" in sys.modules or importlib.util.find_spec("openai") is not None:
         return
 
     openai_module = types.ModuleType("openai")

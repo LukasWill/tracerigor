@@ -1,5 +1,7 @@
 """CPU-only smoke tests for the judge integration layer."""
 
+import pytest
+
 from tracerigor.judge import JudgeConfig, JudgeIntegration, register_all_templates
 from tracerigor.judge.config import HeuristicConfig, RewardConfig
 from tracerigor.judge.heuristics import run_heuristics
@@ -38,12 +40,14 @@ def test_judge_configuration_and_templates() -> None:
 def test_reward_and_disabled_integration() -> None:
     response = JudgeResponse(env_id="test_0")
     response.rubrics = {
-        "grounding": RubricResult(label="pass", score=1.0, confidence=0.9),
+        "observation_grounding": RubricResult(label="pass", score=1.0, confidence=0.9),
         "action_coherence": RubricResult(label="pass", score=1.0, confidence=0.8),
         "temporal_consistency": RubricResult(label="fail", score=0.0, confidence=0.8),
     }
+    # Weighted mean (0.35 + 0.40) / 1.0 = 0.75 -> 2 * 0.75 - 1 = 0.5, clamped to the
+    # default reward_range upper bound of 0.25.
     reward = compute_process_reward(response, RewardConfig())
-    assert 0.0 <= reward <= 1.0
+    assert reward == pytest.approx(0.25)
 
     integration = JudgeIntegration(JudgeConfig(enabled=False))
     results = {
