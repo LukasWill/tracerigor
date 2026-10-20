@@ -24,12 +24,6 @@ process rewards come from
 `tracerigor.verifier` clients. Use `tracerigor.judge` for offline scoring
 (`tracerigor judge`) or integrate it explicitly.
 
-**Bundled aggregate statistics have no generating code.**
-`examples/analysis/aggregate_step_controlled_partials/*.json` contain
-per-rubric cross-step and step-controlled partial correlations for several
-runs. The code and the raw judged records that produced them are not part of
-this release, so treat them as schema examples, not reproducible results.
-
 ## Reward and judge semantics
 
 **`heuristics.short_circuit_penalty` is unused (open).** The config documents

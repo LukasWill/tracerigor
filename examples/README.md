@@ -24,11 +24,6 @@ tracerigor analyze judged.jsonl
 tracerigor analyze examples/analysis/sample_records.jsonl --group-by training_step
 ```
 
-`analysis/aggregate_step_controlled_partials/` contains per-rubric aggregate
-correlation statistics exported from earlier runs. The code that produced them
-is not included in this release, so treat them as schema examples rather than
-reproducible results.
-
 ## Generate environment datasets
 
 Install the data and environment extras, then run:

@@ -4,6 +4,11 @@ TraceRigor is a toolkit for training multi-turn LLM/VLM agents with RLVR and
 auditing whether their visible reasoning traces stay reliable: grounded in the
 observation, coherent with the chosen action, and consistent across turns.
 
+It accompanies the paper
+[RLVR Makes Agents Win More, but Not Necessarily Reason Better](https://openreview.net/forum?id=jsTJu11CIh)
+(NeurIPS 2026 Workshop on Interpreting Agent Behavior; also at the
+[Workshop on Evaluation of Interactive Agents](https://openreview.net/forum?id=xpTzSAVfAF)).
+
 Use the documentation to:
 
 - install only the dependencies needed for your workflow;

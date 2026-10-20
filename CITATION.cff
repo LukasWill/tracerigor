@@ -1,0 +1,56 @@
+cff-version: 1.2.0
+message: "If you use TraceRigor, please cite the accompanying paper."
+title: "TraceRigor"
+abstract: >-
+  A toolkit for training multi-turn LLM agents with reinforcement learning from
+  verifiable rewards (RLVR) and auditing whether their reasoning traces stay
+  grounded, coherent, and consistent.
+type: software
+license: MIT
+repository-code: "https://github.com/LukasWill/tracerigor"
+version: 0.1.0
+authors:
+  - given-names: Wenhao
+    family-names: Lu
+  - given-names: Jae Hee
+    family-names: Lee
+  - given-names: Josua
+    family-names: Spisak
+  - given-names: Xufeng
+    family-names: Zhao
+  - given-names: Stefan
+    family-names: Wermter
+preferred-citation:
+  type: conference-paper
+  title: "RLVR Makes Agents Win More, but Not Necessarily Reason Better"
+  authors:
+    - given-names: Wenhao
+      family-names: Lu
+    - given-names: Jae Hee
+      family-names: Lee
+    - given-names: Josua
+      family-names: Spisak
+    - given-names: Xufeng
+      family-names: Zhao
+    - given-names: Stefan
+      family-names: Wermter
+  collection-title: "The 1st Workshop on Interpreting Agent Behavior (IAB) at NeurIPS 2026"
+  year: 2026
+  url: "https://openreview.net/forum?id=jsTJu11CIh"
+references:
+  - type: conference-paper
+    title: "RLVR Makes Agents Win More, but Not Necessarily Reason Better"
+    authors:
+      - given-names: Wenhao
+        family-names: Lu
+      - given-names: Jae Hee
+        family-names: Lee
+      - given-names: Josua
+        family-names: Spisak
+      - given-names: Xufeng
+        family-names: Zhao
+      - given-names: Stefan
+        family-names: Wermter
+    collection-title: "Workshop on Evaluation of Interactive Agents @ NeurIPS 2026"
+    year: 2026
+    url: "https://openreview.net/forum?id=xpTzSAVfAF"

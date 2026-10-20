@@ -4,6 +4,11 @@
 ![Python 3.10 | 3.11](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+Code for **[RLVR Makes Agents Win More, but Not Necessarily Reason Better](https://openreview.net/forum?id=jsTJu11CIh)**
+(Lu, Lee, Spisak, Zhao, Wermter), presented at the NeurIPS 2026
+[Workshop on Interpreting Agent Behavior](https://openreview.net/forum?id=jsTJu11CIh) and the
+[Workshop on Evaluation of Interactive Agents](https://openreview.net/forum?id=xpTzSAVfAF).
+
 **When reinforcement learning makes an agent succeed more often, does its reasoning get better, or does it just win?**
 
 TraceRigor is a research toolkit for training multi-turn LLM/VLM agents with
@@ -208,11 +213,12 @@ docs/         workflow, configuration, judge, and environment guides
 
 ## Reproducibility scope
 
-This repository is a software release. It contains the implementation, prompt
-definitions, public configuration, and small fixtures. It does not contain raw
-experiment runs, model checkpoints, judge outputs from the original
-experiments, research notebooks, manuscript sources, or third-party datasets,
-so paper-level numbers cannot be regenerated from it alone. Everything in the
+This repository is the software release accompanying the paper. It contains
+the implementation, prompt definitions, public configuration, and small
+fixtures. It does not contain raw experiment runs, model checkpoints, judge
+outputs from the original experiments, research notebooks, manuscript sources,
+or third-party datasets, so the paper's numbers cannot be regenerated from it
+alone. Everything in the
 quick start is reproducible on CPU and runs in CI. Open issues that affect
 reproducibility are tracked in [docs/known-issues.md](docs/known-issues.md).
 
@@ -228,8 +234,33 @@ their own licences.
 
 ## Citation
 
-Citation metadata will be added when the accompanying paper's author list and
-archival identifier are public. Until then, please cite the repository URL.
+If you use TraceRigor, please cite the paper. It appears at two NeurIPS 2026
+workshops; cite the venue you refer to. Both entries share the key
+`lu2026rlvr`, so rename one if you include both in the same `.bib` file.
+
+```bibtex
+@inproceedings{
+lu2026rlvr,
+title={{RLVR} Makes Agents Win More, but Not Necessarily Reason Better},
+author={Wenhao Lu and Jae Hee Lee and Josua Spisak and Xufeng Zhao and Stefan Wermter},
+booktitle={The 1st Workshop on Interpreting Agent Behavior (IAB) at NeurIPS 2026},
+year={2026},
+url={https://openreview.net/forum?id=jsTJu11CIh}
+}
+```
+
+```bibtex
+@inproceedings{
+lu2026rlvr,
+title={{RLVR} Makes Agents Win More, but Not Necessarily Reason Better},
+author={Wenhao Lu and Jae Hee Lee and Josua Spisak and Xufeng Zhao and Stefan Wermter},
+booktitle={Workshop on Evaluation of Interactive Agents @ NeurIPS 2026},
+year={2026},
+url={https://openreview.net/forum?id=xpTzSAVfAF}
+}
+```
+
+GitHub's "Cite this repository" button uses [`CITATION.cff`](CITATION.cff).
 
 ## Licence
 

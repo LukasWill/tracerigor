@@ -3,7 +3,7 @@
 Before publishing a snapshot:
 
 - [ ] Confirm the public repository URL and add it to package metadata.
-- [ ] Add final project authors and an archival identifier to citation metadata.
+- [x] Add final project authors and paper links to citation metadata (`CITATION.cff`).
 - [ ] Run the validation commands documented in the release report.
 - [ ] Review `git status` and ensure the cleanup quarantine is not staged.
 - [ ] Scan the complete Git history for revoked credentials and private artifacts.
