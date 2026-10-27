@@ -174,20 +174,29 @@ reproduction is outside the scope of this software release.
 
 ## Relationship to VAGEN and VERL
 
-TraceRigor is derived from the public
-[VAGEN](https://github.com/RAGEN-AI/VAGEN) codebase and retains substantial
-environment, rollout, and training infrastructure from that project. The
-current project extends that foundation with trace-reliability judging,
-verifier prompts and mechanical checks, RLVR-oriented reliability analysis,
-additional environment integrations, and public workflow consolidation.
+TraceRigor is derived from the
+[VAGEN](https://github.com/RAGEN-AI/VAGEN) codebase and retains
+its rollout mechanism and training infrastructure. The
+current project extends that foundation with trace-reliability (online) judging,
+verifier prompts and mechanical (e.g., attention) checks, turn-wise reliability relationship analysis,
+and supports additional environment integrations.
 
 The upstream VAGEN MIT licence and copyright notice are retained in `LICENSE`.
 Four retained source files remain under Apache License 2.0; see
 `THIRD_PARTY_NOTICES.md` and `LICENSES/Apache-2.0.txt`. VERL and environment
 packages remain external dependencies governed by their own licences.
 
-Citation metadata will be added when the author list and archival identifier are
-public.
+## Citation
+```
+@inproceedings{
+lu2026rlvr,
+title={{RLVR} Makes Agents Win More, but Not Necessarily Reason Better},
+author={Wenhao Lu and Jae Hee Lee and Josua Spisak and Xufeng Zhao and Stefan Wermter},
+booktitle={The 1st Workshop on Interpreting Agent Behavior (IAB) at NeurIPS 2026},
+year={2026},
+url={https://openreview.net/forum?id=jsTJu11CIh}
+}
+```
 
 ## Licence
 
