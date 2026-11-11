@@ -40,7 +40,9 @@ envs = [
   "gym>=0.26",
   "gymnasium>=0.29",
   "gym-sokoban>=0.0.6",
+  "matplotlib>=3.7",
   "pillow>=10",
+  "scipy>=1.10",
   "together>=1.2",
 ]
 judge = [

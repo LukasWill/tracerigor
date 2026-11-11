@@ -13,6 +13,18 @@ from tracerigor.judge.config import JudgeConfig
 SAMPLE_TURNS = Path(__file__).resolve().parents[1] / "examples" / "judge" / "sample_turns.jsonl"
 
 
+def _require_installed(*modules: str) -> None:
+    """Skip unless each module is really installed.
+
+    Some integration tests register bare stub modules (e.g. ``openai``) when a
+    package is missing, which ``pytest.importorskip`` alone would accept.
+    """
+    for name in modules:
+        module = pytest.importorskip(name)
+        if getattr(module, "__file__", None) is None:
+            pytest.skip(f"{name} is not installed")
+
+
 def _offline_config(base_url: str = "http://127.0.0.1:9/v1") -> JudgeConfig:
     cfg = JudgeConfig.from_dict(
         {"provider": {"base_url": base_url, "model": "stub", "max_retries": 0, "max_concurrency": 2}}
@@ -55,8 +67,7 @@ def test_cli_dry_run_writes_jsonl(tmp_path, capsys) -> None:
 
 
 def test_round_trip_against_stub_endpoint(stub_judge_server, tmp_path) -> None:
-    pytest.importorskip("openai")
-    pytest.importorskip("httpx")
+    _require_installed("openai", "httpx")
     base_url, requests = stub_judge_server
 
     records = judge_turns(load_records(SAMPLE_TURNS), _offline_config(base_url))
@@ -85,8 +96,7 @@ def test_client_reuse_across_event_loops(stub_judge_server) -> None:
     The concurrency semaphore used to stay bound to the first ``asyncio.run``
     loop, so later batches silently returned ``success=False`` for most items.
     """
-    pytest.importorskip("openai")
-    pytest.importorskip("httpx")
+    _require_installed("openai", "httpx")
     from tracerigor.judge.client import JudgeClient
 
     base_url, _ = stub_judge_server
