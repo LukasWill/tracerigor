@@ -11,16 +11,18 @@ Design goals:
   - Compatible: works with both universal (3-rubric) and per-rubric modes
 
 Shaping modes (ported from service_llm_verifier_wrapper):
-  - Default:     r_proc = clamp(2 * r_raw - 1, lo, hi)
-  - Symmetric:   delta = w_t * (2*score - 1)   — allows negative
-  - Gate-mul:    big scores → multiplicative, small scores → additive/floor
+  - Default:     r_proc = w_t * max(0, 2*r_raw - 1)   — bonus only, never negative
+  - Symmetric:   r_proc = w_t * (2*r_raw - 1)         — allows negative
+  - Gate-mul:    big scores → multiplicative with floor, small scores → additive
   - Annealing:   w_t decays over [anneal_start, anneal_end]
+
+Heuristic short-circuits bypass shaping and receive a fixed penalty.
 """
 from __future__ import annotations
 
 from typing import Dict
 
-from tracerigor.judge.config import GatingConfig, RewardConfig
+from tracerigor.judge.config import GatingConfig, HeuristicConfig, RewardConfig
 from tracerigor.judge.schema import JudgeResponse, RubricResult
 
 
@@ -51,18 +53,19 @@ def compute_process_reward(
     cfg: RewardConfig,
     gating_cfg: GatingConfig | None = None,
     train_step: int = 0,
+    short_circuit_penalty: float = HeuristicConfig.short_circuit_penalty,
 ) -> float:
     """
     Map a JudgeResponse to a bounded process reward scalar.
 
     Supports three shaping modes (selected via RewardConfig flags):
 
-    1. **Default** (gate_mul=False, symmetric=False):
+    1. **Default / asymmetric** (gate_mul=False, symmetric_shaping=False):
        r_raw = weighted_avg(rubric_scores)
-       r_proc = clamp(2*r_raw - 1, lo, hi)
+       r_proc = w_t × max(0, 2*r_raw - 1)   — bonus only for r_raw > 0.5
 
     2. **Symmetric** (symmetric_shaping=True, gate_mul=False):
-       delta = w_t × (2*r_raw - 1)   — allows both positive and negative
+       r_proc = w_t × (2*r_raw - 1)   — allows both positive and negative
 
     3. **Gate-mul** (gate_mul=True):
        Split big/small scores. Big → multiplicative with floor alpha_big.
@@ -71,12 +74,18 @@ def compute_process_reward(
     Annealing:
        When gating_cfg.anneal_enabled, w_t decays from anneal_hi_scale → anneal_lo_scale
        over [anneal_start_step, anneal_end_step].
+
+    Short-circuited turns (Layer-0 heuristic fired) skip all of the above and
+    receive ``short_circuit_penalty`` (``HeuristicConfig.short_circuit_penalty``,
+    passed in by ``JudgeRouter``), clamped to ``reward_range``.
+
+    The result is always clamped to ``cfg.reward_range``.
     """
     lo, hi = cfg.reward_range
 
     # Short-circuit: heuristics fired, use fixed penalty
     if judge_response.short_circuited:
-        return max(lo, min(hi, -abs(cfg.insufficient_evidence_penalty)))
+        return max(lo, min(hi, short_circuit_penalty))
 
     rubrics = judge_response.rubrics
     weights = cfg.rubric_weights
@@ -121,11 +130,11 @@ def compute_process_reward(
             # Small reward: additive component
             r_proc = w_t * r_raw + cfg.beta_small
     elif cfg.symmetric_shaping:
-        # Symmetric: delta = w_t * (2*score − 1)
+        # Symmetric: map [0,1] → [-1,+1] and scale; allows negative rewards
         r_proc = w_t * (2.0 * r_raw - 1.0)
     else:
-        # Default: map [0,1] → [-1,+1] and scale
-        r_proc = w_t * (2.0 * r_raw - 1.0)
+        # Asymmetric (default): positive bonus only when r_raw > 0.5
+        r_proc = w_t * max(0.0, 2.0 * r_raw - 1.0)
 
     # Clamp to configured range
     return max(lo, min(hi, r_proc))

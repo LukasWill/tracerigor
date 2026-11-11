@@ -35,26 +35,15 @@ process rewards come from
 
 ## Reward and judge semantics
 
-**`heuristics.short_circuit_penalty` is unused (open).** The config documents
-it as "r_proc when heuristic fires" (default −0.20), but
-`compute_process_reward` assigns short-circuited turns
-`-|insufficient_evidence_penalty|` (default −0.15). *Proposed:* use
-`short_circuit_penalty` for short-circuited turns, or remove the field.
-
-**Default shaping mode equals `symmetric_shaping` (open).** The
-`RewardConfig` docstring describes the default as asymmetric ("only positive
-bonus for score > 0.5"), but the default and symmetric branches both compute
-`w_t · (2·r_raw − 1)` and allow negative rewards. `alpha_small` is
-not used by `compute_process_reward`. *Proposed:* implement the documented
-asymmetric default or correct the docstring.
-
-**Rollout history order (open).** `build_packets_from_step_results` passes
-recorder entries in chronological order, while the prompt header says "most
-recent first", the formatter labels index 0 as `t-1`, and the `repetition`
-heuristic compares against `history[0]`. With `history_k > 1`, the repetition
-check therefore compares against the oldest turn in the window. `tracerigor
-judge` input is documented as most-recent-first and is not affected.
-*Proposed:* reverse the recorder window in `packet_builder.py`.
+**Repetition check never fires on rollout history (open).** History built by
+`build_packets_from_step_results` stores the observation under `obs`, while
+the `repetition` heuristic reads `observation_text` or
+`post_action_observation`, and stores `action_tokens` only when the recorder
+entry has `think_content`. The check therefore never fires for packets built
+from the rollout recorder; `tracerigor judge` input uses `observation_text`
+and is not affected. The check is informational and does not change rewards.
+*Proposed:* emit `observation_text` and `action_tokens` in
+`_format_recorder_history`.
 
 **Blocking-call helper in the training-path verifier wrapper (open).**
 `_run_coro_blocking` in `service_llm_verifier_wrapper.py` uses the same
@@ -65,6 +54,26 @@ the original one. Behaviour is unchanged outside a running loop.
 
 ## Fixed in this release
 
+- **Short-circuit penalty.** Turns short-circuited by a Layer-0 heuristic now
+  receive `heuristics.short_circuit_penalty` (default −0.20), which
+  `JudgeRouter` passes to `compute_process_reward`. They previously received
+  `-|reward.insufficient_evidence_penalty|` (−0.15), and
+  `short_circuit_penalty` was ignored. Covered by
+  `tests/test_judge_semantics.py`.
+- **Default shaping is asymmetric.** With `symmetric_shaping: false` and
+  `gate_mul: false`, the process reward is now `w_t · max(0, 2·r_raw − 1)`, as
+  the `RewardConfig` docstring described: a bonus only when `r_raw > 0.5`,
+  never negative. It previously computed `w_t · (2·r_raw − 1)`, identical to
+  `symmetric_shaping: true`; set that flag to keep the old numbers.
+  `alpha_small` is still unused by the judge and is now documented as such.
+  Covered by `tests/test_judge_semantics.py`.
+- **Rollout history order.** `build_packets_from_step_results` now passes the
+  recorder window most recent first, matching the prompt header ("most recent
+  first"), the `[t-1]` labels, and the `repetition` heuristic, which compares
+  against `history[0]`. It previously passed the window oldest first, so with
+  `history_k > 1` the prompt mislabelled turns. `tracerigor judge` input was
+  already most recent first and is unchanged. Covered by
+  `tests/test_judge_semantics.py`.
 - **Judge client and event loops.** `JudgeClient.judge_batch_sync` runs each
   batch under a new `asyncio.run` loop, but its concurrency semaphore stayed
   bound to the loop in which a request first had to wait for a free slot.

@@ -114,6 +114,7 @@ class JudgeRouter:
                 )
                 resp.process_reward = compute_process_reward(
                     resp, self.cfg.reward, self.cfg.gating, self._train_step,
+                    short_circuit_penalty=self.cfg.heuristics.short_circuit_penalty,
                 )
                 results[packet.env_id] = resp
                 self._audit.maybe_enqueue(packet, resp)
@@ -128,6 +129,7 @@ class JudgeRouter:
         for packet, resp in zip(llm_packets, llm_results):
             resp.process_reward = compute_process_reward(
                 resp, self.cfg.reward, self.cfg.gating, self._train_step,
+                short_circuit_penalty=self.cfg.heuristics.short_circuit_penalty,
             )
             results[packet.env_id] = resp
             self._audit.maybe_enqueue(packet, resp)

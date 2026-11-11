@@ -33,7 +33,7 @@ def build_turn_packet(
         episode_step:       Current episode step (1-indexed).
         obs_text:           Observation text from recorder entry.
         obs_images:         Observation images from recorder entry.
-        history:            Recent history entries from recorder.
+        history:            Recent history entries, most recent first.
         raw_trace:          Full decoded LLM response string.
         info:               Step info dict from env.
         admissible_actions: List of valid actions for this env.
@@ -145,10 +145,12 @@ def build_packets_from_step_results(
         obs_text = pre_action_record.get("obs_str", "")
         obs_images = pre_action_record.get("image_data", [])
 
-        # History: entries before the current one
+        # History: up to history_k entries before the current one, most recent
+        # first (prompt._format_history labels index 0 as t-1, and the
+        # repetition heuristic compares against history[0]).
         history_start = max(0, len(records) - 1 - history_k)
         history_end = max(0, len(records) - 1)
-        history_entries = records[history_start:history_end]
+        history_entries = records[history_start:history_end][::-1]
 
         # Task name from config
         config = env_configs.get(env_id)
