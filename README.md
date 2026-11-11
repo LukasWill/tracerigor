@@ -224,13 +224,12 @@ reproducibility are tracked in [docs/known-issues.md](docs/known-issues.md).
 
 ## Relationship to VAGEN and VERL
 
-TraceRigor is derived from [VAGEN](https://github.com/RAGEN-AI/VAGEN) and keeps
-substantial environment, rollout, and training infrastructure from it.
-TraceRigor adds the trace-reliability judge and verifier layer, environment
-ground-truth prompts and mechanical checks, violation tracking, RLVR-oriented
-reliability analysis, additional environment integrations, and the
-consolidated CLI. VERL and the simulators remain external dependencies under
-their own licences.
+TraceRigor is derived from the
+[VAGEN](https://github.com/RAGEN-AI/VAGEN) codebase and retains
+its rollout mechanism and training infrastructure. The
+current project extends that foundation with trace-reliability (online) judging,
+verifier prompts and mechanical (e.g., attention) checks, turn-wise reliability relationship analysis,
+and supports additional environment integrations.
 
 ## Citation
 
