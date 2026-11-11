@@ -8,6 +8,19 @@ RUBRICS = ("observation_grounding", "action_coherence", "temporal_consistency")
 
 
 @pytest.fixture
+def requires_judge_client():
+    """Skip unless openai and httpx are really installed (the `judge` extra).
+
+    Some integration tests register bare stub modules (e.g. ``openai``) when a
+    package is missing, which ``pytest.importorskip`` alone would accept.
+    """
+    for name in ("openai", "httpx"):
+        module = pytest.importorskip(name)
+        if getattr(module, "__file__", None) is None:
+            pytest.skip(f"{name} is not installed")
+
+
+@pytest.fixture
 def stub_judge_server():
     """Local OpenAI-compatible endpoint that answers YES on every rubric.
 

@@ -35,7 +35,7 @@ def test_short_circuit_penalty_is_clamped_to_reward_range() -> None:
     assert compute_process_reward(response, RewardConfig(), short_circuit_penalty=-0.90) == pytest.approx(-0.25)
 
 
-def test_router_passes_configured_short_circuit_penalty() -> None:
+def test_router_passes_configured_short_circuit_penalty(requires_judge_client) -> None:
     cfg = JudgeConfig.from_dict(
         {
             "provider": {"base_url": "http://127.0.0.1:9/v1", "model": "stub"},
