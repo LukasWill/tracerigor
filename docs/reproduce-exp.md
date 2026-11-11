@@ -25,5 +25,6 @@ the seeded Sokoban simulator with hand-written agent responses; regenerate it
 with `python examples/judge/make_sample_turns.py`. The test suite also runs
 the LLM-judge path end to end against a local stub endpoint.
 
-Open reproducibility issues, including the unpinned VERL revision, are listed
-in [Known issues](known-issues.md).
+The paper's per-agent settings, judge configuration, and pinned VERL build
+are listed in [Paper results](results.md#run-configuration). Open
+reproducibility issues are listed in [Known issues](known-issues.md).

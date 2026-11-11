@@ -4,29 +4,92 @@
 ![Python 3.10 | 3.11](https://img.shields.io/badge/python-3.10%20%7C%203.11-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Code for **[RLVR Makes Agents Win More, but Not Necessarily Reason Better](https://openreview.net/forum?id=jsTJu11CIh)**
-(Lu, Lee, Spisak, Zhao, Wermter), presented at the NeurIPS 2026
-[Workshop on Interpreting Agent Behavior](https://openreview.net/forum?id=jsTJu11CIh) and the
-[Workshop on Evaluation of Interactive Agents](https://openreview.net/forum?id=xpTzSAVfAF).
+**Code and results for [RLVR Makes Agents Win More, but Not Necessarily Reason Better](https://openreview.net/forum?id=jsTJu11CIh)**<br>
+Wenhao Lu, Jae Hee Lee, Josua Spisak, Xufeng Zhao, Stefan Wermter<br>
+NeurIPS 2026 [Workshop on Interpreting Agent Behavior](https://openreview.net/forum?id=jsTJu11CIh) ·
+[Workshop on Evaluation of Interactive Agents](https://openreview.net/forum?id=xpTzSAVfAF)
 
-**When reinforcement learning makes an agent succeed more often, does its reasoning get better, or does it just win?**
+Reinforcement learning from verifiable rewards (RLVR) makes LLM and VLM agents
+succeed more often. TraceRigor asks whether the reasoning they show along the
+way gets more reliable too. It trains multi-turn agents with RLVR and judges
+every turn of their visible reasoning on three rubrics: is it **grounded** in
+the current observation, is the action **coherent** with it, and is it
+**temporally consistent** with what earlier turns revealed?
 
-TraceRigor is a research toolkit for training multi-turn LLM/VLM agents with
-reinforcement learning from verifiable rewards (RLVR), and for auditing whether
-their visible reasoning traces stay reliable along the way. It treats trace
-reliability as a measured quantity next to environment reward, because a
-high-reward trajectory can still describe a state that isn't there, take an
-action its own reasoning argues against, or ignore what the last turn revealed.
+<p align="center">
+  <img src="docs/assets/figures/overview.png" alt="Evaluation framework: multi-turn RLVR produces trajectories; a trace reliability judge scores grounding, action coherence, and temporal consistency per turn; internal signals are logged; analyses run across checkpoints, within a checkpoint, and across turns." width="100%">
+</p>
 
-Each agent turn is scored on three rubrics:
+## Key findings
+
+Five agents (Qwen2.5-3B/7B and Qwen2.5-VL-3B) trained with PPO on ALFWorld,
+ScienceWorld, Sokoban, and AI2-THOR Navigation. Turns from evaluation rollouts
+at each checkpoint are judged post hoc; the judge is never part of the
+training reward.
+
+**1. Performance and reliability rise together across training...**
+Mean cumulative reward climbs from −8.0 to +60.5 for SciWorld-3B, and
+ALFWorld success from 8.6% to 85.2%. Mean rubric scores also tend to rise, but
+non-monotonically, and the weakest rubric depends on modality: temporal
+consistency for long-horizon text agents, grounding for visual agents.
+
+<p align="center">
+  <img src="docs/assets/figures/performance_reliability_across_training.png" alt="Per-checkpoint mean rubric scores and task performance across training for five agents, with OLS fits of composite reliability against performance." width="100%">
+</p>
+
+**2. ...but within a checkpoint, the trajectories that win are barely more reliable.**
+Splitting each checkpoint's trajectories into high and low performers, the
+length-controlled gap in composite reliability is small (≈0.1 on a 0–1
+scale). The two groups' reliability distributions overlap by 49–82%, and a
+randomly drawn high performer is more reliable than a low performer only
+55–70% of the time (50% is chance). Controlling for trajectory length
+collapses apparent couplings, for example action coherence in ALFWorld from
++0.40 to +0.08 and grounding in Sokoban from +0.45 to +0.15 (Spearman ρ).
+
+<p align="center">
+  <img src="docs/assets/figures/high_vs_low_performers.png" alt="Length-controlled composite reliability of high- and low-performing trajectories per checkpoint for five agents, with 95% confidence ribbons and the pooled gap." width="100%">
+</p>
+
+**3. Reliability decays over the turns of an episode, even in successful ones.**
+Temporal consistency leads the decline in long-horizon text agents, with the
+strongest decline in ALFWorld (mean within-trajectory ρ = −0.27); Sokoban's
+decline is led by grounding (−0.18) and Navigation's by action coherence
+(−0.21). The early- vs late-turn gap in temporal consistency peaks at +0.42
+(SciWorld-3B, step 50); it often narrows as agents master the task and can
+widen again when performance regresses.
+
+<p align="center">
+  <img src="docs/assets/figures/reliability_by_turn_position.png" alt="Per-rubric reliability against normalised turn position for SciWorld-3B, SciWorld-7B, and ALFWorld-3B." width="49%">
+  <img src="docs/assets/figures/early_vs_late_turns.png" alt="Mean rubric scores over the first five and last five turns of each trajectory across training." width="49%">
+</p>
+
+**4. Agents act coherently on stale or false beliefs.** Auditing 34,436
+text-agent and 3,524 visual-agent turns: in ScienceWorld, 25.2% of turns contain
+unsupported progress or outcome claims and 20.1% repeat failures without
+adapting the plan; in Sokoban, 56.9% follow a false premise coherently and
+72.6% reverse a player/box/target relation relative to the image.
+
+<p align="center">
+  <img src="docs/assets/figures/sokoban_false_premise.png" alt="Three Sokoban turns where the agent misstates the spatial relation between itself, the box, and the target, yet chooses actions coherent with that false premise." width="520">
+</p>
+
+**5. Internal signals don't certify reliable reasoning.** Token entropy and
+attention allocation shift broadly during training but rarely separate more-
+from less-reliable traces, and more attention to the image does not by itself
+mean grounded reasoning.
+
+Judge labels (`gpt-5.4-nano-2026-03-17`) agree with independent human labels
+on 465 doubly-annotated turns with raw agreement of at least 0.79 in every
+modality × rubric cell. All main-text figures, tables, and run settings are in
+**[docs/results.md](docs/results.md)**.
+
+## What's in this repository
 
 | Rubric | Question asked of each turn |
 | --- | --- |
 | **Observation grounding** | Do the reasoning's claims about the current state match the observation? |
 | **Action coherence** | Does the chosen action follow from the stated reasoning? |
 | **Temporal consistency** | Does the reasoning update its beliefs after feedback from earlier turns? |
-
-## Highlights
 
 - **Multi-fidelity trace judge.** Deterministic Layer-0 checks (format,
   out-of-action-space, repetition, empty reasoning) resolve mechanically
@@ -44,8 +107,9 @@ Each agent turn is scored on three rubrics:
 - **Multi-turn RLVR stack.** Service-backed environments, a multi-turn rollout
   manager with turn-level loss/GAE masks, and PPO/GRPO with `bi_level_gae`,
   `turn_wise_gae`, and `masked_gae` advantage estimators for turn-level credit
-  assignment. Optional rubric-based process rewards can shape training, with
-  bounded mapping, gating, and annealing schedules.
+  assignment. Rubric-based process rewards can optionally shape training, with
+  bounded mapping, gating, and annealing schedules (not used in the paper,
+  which judges post hoc).
 - **Nine environment integrations.** Sokoban, FrozenLake, and Blackjack run on
   CPU from `pip`; ALFWorld, ScienceWorld, BabyAI-Text, AI2-THOR Navigation,
   ManiSkill PrimitiveSkill, and SVG reconstruction are opt-in. Missing
@@ -53,6 +117,9 @@ Each agent turn is scored on three rubrics:
 - **Reliability analysis.** `tracerigor analyze` summarizes judged JSON/JSONL
   records by checkpoint or any other field: rubric pass/uncertain rates, mean
   trace reliability, parse and query success, and heuristic short-circuit rate.
+
+<details>
+<summary><b>Toolkit architecture</b></summary>
 
 ```mermaid
 flowchart LR
@@ -73,6 +140,8 @@ flowchart LR
     L1 --> analyze["tracerigor analyze<br/>reliability by checkpoint"]
     SC --> analyze
 ```
+
+</details>
 
 ## Quick start (CPU, about two minutes)
 
@@ -146,7 +215,7 @@ print(reward, info["metrics"]["turn_metrics"])  # 0.4 {'action_is_valid': True, 
 | Inspect environments | `tracerigor envs --verbose` | CPU | `.[envs]` |
 | Generate seed datasets | `tracerigor data` | CPU (Blackjack example) | `.[data,envs]` |
 | Self-hosted judge model | `scripts/launch_judge_server.sh` | GPU sized to the model | vLLM (separate env) |
-| Multi-turn RL training | `tracerigor train` / `examples/train/run.sh` | One or more CUDA GPUs | `.[train]` + external VERL |
+| Multi-turn RL training | `tracerigor train` / `examples/train/run.sh` | One or more CUDA GPUs | `.[train]` + verl-tracerigor |
 
 There is no single VRAM figure: requirements follow from model size,
 precision, context length, batch size, and sharding. See
@@ -165,9 +234,24 @@ tracerigor data examples/data/blackjack.yaml \
 
 ### Training
 
-Training needs a compatible VERL installation, model weights, and GPUs. It is
-not a zero-compute quick start. The launcher checks its required variables and
-defaults to a two-step smoke configuration with console-only logging:
+The paper's agents were trained with
+[**verl-tracerigor**](https://github.com/LukasWill/verl-tracerigor), a VERL
+0.2.0.dev build whose PPO policy loss uses asymmetric clipping (0.2 / 0.28) with
+dual-clip (3.0). The tag `tracerigor-neurips2026` marks the exact revision; its
+[`TRACERIGOR_CHANGES.md`](https://github.com/LukasWill/verl-tracerigor/blob/main/TRACERIGOR_CHANGES.md)
+lists every change to upstream VERL.
+
+```bash
+python -m pip install -e '.[train]'
+python -m pip install --no-deps \
+  "verl @ git+https://github.com/LukasWill/verl-tracerigor.git@tracerigor-neurips2026"
+```
+
+VERL's runtime stack (vLLM, flash-attention, and a matching PyTorch/CUDA build)
+is installed separately; the exact package versions used for the paper are not
+recorded yet. Training is not a zero-compute quick start. The launcher checks
+its required variables and defaults to a two-step smoke configuration with
+console-only logging:
 
 ```bash
 export MODEL_PATH=Qwen/Qwen2.5-VL-3B-Instruct
@@ -176,13 +260,11 @@ export VAL_FILE=data/blackjack/test.parquet
 bash examples/train/run.sh
 ```
 
-> [!NOTE]
-> VERL is an external dependency and its version is not yet pinned in this
-> release. TraceRigor inherits its trainer from
-> [VAGEN](https://github.com/RAGEN-AI/VAGEN), which vendors VERL as a git
-> submodule. Use a VERL revision whose API matches `tracerigor/trainer/`
-> (`verl.workers.fsdp_workers`, `verl.workers.reward_manager`,
-> `verl.utils.dataset.rl_dataset`). See [Known issues](docs/known-issues.md).
+The smoke configuration is not the paper's recipe. The paper used bi-level GAE
+with turn-level discount 0.95, actor/critic learning rates 1e-6/1e-5, 128
+environments per step, a K = 5 turn history window, and 300 PPO steps; see
+[Run configuration](docs/results.md#run-configuration) for all per-agent
+settings.
 
 ## Where to look in the code
 
@@ -208,7 +290,7 @@ tracerigor/
   inference/  provider adapters for evaluation rollouts
   server/     legacy environment and judge servers
 examples/     judge, analysis, dataset, and training examples
-docs/         workflow, configuration, judge, and environment guides
+docs/         paper results, workflow, configuration, judge, and environment guides
 ```
 
 ## Reproducibility scope
@@ -218,8 +300,9 @@ the implementation, prompt definitions, public configuration, and small
 fixtures. It does not contain raw experiment runs, model checkpoints, judge
 outputs from the original experiments, research notebooks, manuscript sources,
 or third-party datasets, so the paper's numbers cannot be regenerated from it
-alone. Everything in the
-quick start is reproducible on CPU and runs in CI. Open issues that affect
+alone. The paper's settings, the judge model, and the pinned VERL build are
+documented in [docs/results.md](docs/results.md). Everything in the quick
+start is reproducible on CPU and runs in CI. Open issues that affect
 reproducibility are tracked in [docs/known-issues.md](docs/known-issues.md).
 
 ## Relationship to VAGEN and VERL

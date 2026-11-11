@@ -8,13 +8,22 @@ maintainers.
 
 ## Reproducibility
 
-**VERL revision is not pinned (open).** The trainer imports VERL APIs
-(`verl.workers.fsdp_workers`, `verl.workers.reward_manager`,
-`verl.utils.dataset.rl_dataset`, `verl.single_controller.ray`) but the release
-does not record which VERL revision the experiments used. Upstream VAGEN
-vendors VERL as a git submodule. *Proposed:* record the exact VERL commit (or
-add it as a submodule) together with the tested `torch`, `transformers`,
-`vllm`, and `ray` versions.
+**Runtime package versions are not recorded (open).** The VERL build used for
+the paper is published as
+[verl-tracerigor](https://github.com/LukasWill/verl-tracerigor) at tag
+`tracerigor-neurips2026` (commit `a06492b`, based on JamesKrW/verl `f0c9812`).
+Its policy loss differs from upstream VERL (asymmetric clip 0.2 / 0.28 with
+dual-clip 3.0, fixed in code), so upstream VERL does not reproduce the paper's
+training dynamics. The `torch`, `transformers`, `vllm`, `flash-attn`, and `ray`
+versions used for the paper are not yet recorded. *Proposed:* export them from
+the training environment (`pip freeze`) and add a lock file.
+
+**Paper settings differ from shipped defaults (by design).** The paper's judge
+model is `gpt-5.4-nano-2026-03-17`, while the shipped verifier configuration
+defaults to `gpt-5-nano-2025-08-07`. `examples/train/run.sh` is a two-step
+smoke configuration with `algorithm.high_level_gamma=1.0`; the paper used a
+turn-level discount of 0.95. [Paper results](results.md#run-configuration)
+lists the settings used for each run.
 
 **The judge package is not wired into training (open, by design in this
 release).** `tracerigor.judge.JudgeIntegration` documents how to call it from
@@ -58,12 +67,14 @@ the original one. Behaviour is unchanged outside a running loop.
 
 - **Judge client and event loops.** `JudgeClient.judge_batch_sync` runs each
   batch under a new `asyncio.run` loop, but its concurrency semaphore stayed
-  bound to the first loop. In batches larger than `max_concurrency`, every
-  later batch silently returned `query_success=False` for most turns, which
-  map to a neutral process reward. Loop-bound resources are now recreated per
-  loop; covered by `tests/test_judge_batch.py`. Only direct users of
-  `JudgeRouter`/`JudgeIntegration` were affected; the training-path verifier
-  uses a different client.
+  bound to the loop in which a request first had to wait for a free slot.
+  After any batch larger than `max_concurrency`, requests in later batches
+  that also had to wait failed and were recorded as `query_success=False`,
+  which maps to a neutral process reward. Loop-bound resources are now
+  recreated per loop; covered by `tests/test_judge_batch.py`. This affected
+  only direct users of `JudgeRouter`/`JudgeIntegration`. The paper's judging
+  used the `tracerigor.verifier` client, which creates its rate limiter per
+  batch and is unaffected.
 - **Sokoban import with the `envs` extra.** Sokoban imported the legacy judge
   server (Hydra, OmegaConf, W&B, Together) at module load, so `pip install
   '.[envs]'` did not make it usable. Those backends are now imported on first

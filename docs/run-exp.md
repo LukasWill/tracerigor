@@ -72,9 +72,18 @@ tracerigor data examples/data/blackjack.yaml \
 
 ## Train
 
-The trainer requires a compatible VERL runtime, model weights, environment
-services, and GPU capacity. The VERL revision is not pinned in this release;
-see [Known issues](known-issues.md). The public launcher checks its required variables
+The trainer requires the VERL build used for the paper, model weights,
+environment services, and GPU capacity:
+
+```bash
+python -m pip install -e '.[train]'
+python -m pip install --no-deps \
+  "verl @ git+https://github.com/LukasWill/verl-tracerigor.git@tracerigor-neurips2026"
+```
+
+VERL's runtime stack (vLLM, flash-attention, a matching PyTorch/CUDA build) is
+installed separately. The smoke launcher below is not the paper's recipe; see
+[Run configuration](results.md#run-configuration). The public launcher checks its required variables
 and defaults to two steps:
 
 ```bash

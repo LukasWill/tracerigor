@@ -9,6 +9,9 @@ It accompanies the paper
 (NeurIPS 2026 Workshop on Interpreting Agent Behavior; also at the
 [Workshop on Evaluation of Interactive Agents](https://openreview.net/forum?id=xpTzSAVfAF)).
 
+The paper's figures, tables, and run settings are collected in
+[Paper results](results.md).
+
 Use the documentation to:
 
 - install only the dependencies needed for your workflow;
